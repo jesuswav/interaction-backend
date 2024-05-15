@@ -81,14 +81,29 @@ app.post('/personal', (req, res) => {
   res.json(name)
 })
 
-app.post('/posts', async () => {
+app.post('/posts', async (req, res) => {
   const post_name = req.body.post_name
+  const post_url = req.body.post_url
+  console.log(post_name)
+  console.log(post_url)
   try {
+    // creamos el trigger para la relación
+    const trigger = db.execute(`
+    CREATE TRIGGER crear_interaccion_despues_de_insertar
+    AFTER INSERT ON Posts
+    FOR EACH ROW
+    BEGIN
+      INSERT INTO Interactions (personal_id, post_id)
+      SELECT personal_id, NEW.post_id FROM Personal;
+    END;
+    
+    `)
     // creamos una nueva publicación en la DB
     const create = db.execute({
-      sql: 'INSERT INTO Posts (name) VALUES (:post_name)',
-      args: { post_name }
+      sql: 'INSERT INTO Posts (name, url) VALUES (:post_name, :post_url)',
+      args: { post_name, post_url },
     })
+    res.send(create)
   } catch (e) {
     console.log(e)
   }
