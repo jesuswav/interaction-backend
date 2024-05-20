@@ -4,8 +4,10 @@ const dotenv = require('dotenv')
 // import dotenv from "dotenv"
 const { createClient } = require('@libsql/client')
 // import { createClient } from "@libsql/client"
+const cors = require('cors')
 
 const app = express()
+app.use(cors())
 app.use(express.json())
 const PORT = process.env.port || 3000
 
@@ -28,7 +30,9 @@ app.get('/registros', async (req, res) => {
       Personal.name AS personal_name,
       Posts.post_id,
       Posts.name AS post_name,
-      Posts.registerDate
+      Posts.registerDate,
+      Interactions.checked,
+      Interactions.unique_post AS unique_post_id
     FROM
       Personal
       LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
@@ -42,7 +46,9 @@ app.get('/registros', async (req, res) => {
         row.personal_name,
         row.personal_id,
         row.post_name,
-        row.registerDate
+        row.registerDate,
+        row.checked,
+        row.unique_post_id
       )
 
       if (!usuariosConPublicaciones[row.personal_id]) {
@@ -50,15 +56,17 @@ app.get('/registros', async (req, res) => {
         usuariosConPublicaciones[row.personal_id] = {
           personal_id: row.personal_id,
           personal_name: row.personal_name,
-          publicaciones: [],
+          posts: [],
         }
       }
 
       // Añade la publicación actual al array de publicaciones del usuario
-      usuariosConPublicaciones[row.personal_id].publicaciones.push({
+      usuariosConPublicaciones[row.personal_id].posts.push({
         post_id: row.post_id,
         post_name: row.post_name,
         registerDate: row.registerDate,
+        checked: row.checked,
+        unique_post_id: row.unique_post_id
       })
     })
   } catch (e) {
@@ -88,16 +96,16 @@ app.post('/posts', async (req, res) => {
   console.log(post_url)
   try {
     // creamos el trigger para la relación
-    const trigger = db.execute(`
-    CREATE TRIGGER crear_interaccion_despues_de_insertar
-    AFTER INSERT ON Posts
-    FOR EACH ROW
-    BEGIN
-      INSERT INTO Interactions (personal_id, post_id)
-      SELECT personal_id, NEW.post_id FROM Personal;
-    END;
+    // const trigger = db.execute(`
+    // CREATE TRIGGER IF NOT EXISTS crear_interaccion_despues_de_insertar
+    // AFTER INSERT ON Posts
+    // FOR EACH ROW
+    // BEGIN
+    //   INSERT INTO Interactions (personal_id, post_id)
+    //   SELECT personal_id, NEW.post_id FROM Personal;
+    // END;
     
-    `)
+    // `)
     // creamos una nueva publicación en la DB
     const create = db.execute({
       sql: 'INSERT INTO Posts (name, url) VALUES (:post_name, :post_url)',
