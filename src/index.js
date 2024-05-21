@@ -18,14 +18,16 @@ const db = createClient({
   authToken: process.env.DB_TOKEN,
 })
 
-app.get('/registros', async (req, res) => {
+app.post('/registros', async (req, res) => {
+  const date = req.body.date
   let usuariosConPublicaciones = {}
 
   try {
     const name = 'Jesus'
     console.log('Ejecutando el try')
-    const results = await db.execute(`
-    SELECT
+    const results = await db.execute({
+      sql: `
+      SELECT
       Personal.personal_id,
       Personal.name AS personal_name,
       Posts.post_id,
@@ -37,9 +39,14 @@ app.get('/registros', async (req, res) => {
       Personal
       LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
       LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
+    WHERE
+      DATE(Posts.registerDate) = :date
     ORDER BY
       Personal.personal_id,
-      Posts.post_id;`)
+      Posts.post_id;
+      `,
+      args: {date}
+    })
 
     results.rows.forEach((row) => {
       console.log(
@@ -66,13 +73,29 @@ app.get('/registros', async (req, res) => {
         post_name: row.post_name,
         registerDate: row.registerDate,
         checked: row.checked,
-        unique_post_id: row.unique_post_id
+        unique_post_id: row.unique_post_id,
       })
     })
   } catch (e) {
     console.error(e)
   }
   res.json(Object.values(usuariosConPublicaciones))
+})
+
+app.get('/dates', async (req, res) => {
+  const dates = await db.execute(`
+  SELECT DISTINCT DATE(registerDate) AS registerDate
+  FROM Posts
+  WHERE DATE(registerDate) >= DATE('now', '-2 months')
+  ORDER BY registerDate;
+  `)
+  var datesArray = []
+
+  dates.rows.forEach((row) => {
+    console.log(row.registerDate)
+    datesArray.push(row.registerDate)
+  })
+  res.json(datesArray)
 })
 
 app.post('/personal', (req, res) => {
@@ -104,7 +127,7 @@ app.post('/posts', async (req, res) => {
     //   INSERT INTO Interactions (personal_id, post_id)
     //   SELECT personal_id, NEW.post_id FROM Personal;
     // END;
-    
+
     // `)
     // creamos una nueva publicación en la DB
     const create = db.execute({
@@ -115,6 +138,20 @@ app.post('/posts', async (req, res) => {
   } catch (e) {
     console.log(e)
   }
+})
+
+app.put('/update_checked', (req, res) => {
+  console.log('Hola')
+  console.log(req.body.value)
+
+  const id = req.body.id
+  const value = req.body.value
+
+  const update = db.execute({
+    sql: 'UPDATE Interactions SET checked = :value WHERE unique_post = :id',
+    args: { id, value },
+  })
+  res.json({ id, value })
 })
 
 app.get('/', (req, res) => {
