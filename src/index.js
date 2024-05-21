@@ -45,7 +45,7 @@ app.post('/registros', async (req, res) => {
       Personal.personal_id,
       Posts.post_id;
       `,
-      args: {date}
+      args: { date },
     })
 
     results.rows.forEach((row) => {
@@ -138,6 +138,20 @@ app.post('/posts', async (req, res) => {
   } catch (e) {
     console.log(e)
   }
+})
+
+app.get('/posts', async (req, res) => {
+  const posts = await db.execute('SELECT * FROM Posts;')
+  const postsObj = []
+  posts.rows.forEach((row) => {
+    postsObj.push({
+      post_id: row.post_id,
+      post_name: row.name,
+      post_url: row.url,
+      post_register_date: row.registerDate,
+    })
+  })
+  res.json(postsObj)
 })
 
 app.put('/update_checked', (req, res) => {
