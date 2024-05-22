@@ -112,6 +112,18 @@ app.post('/personal', (req, res) => {
   res.json(name)
 })
 
+app.get('/personal', async (req, res) => {
+  const personal = await db.execute('SELECT * FROM Personal')
+  var users = []
+  personal.rows.forEach((row) => {
+    users.push({
+      user_id: row.personal_id,
+      user_name: row.name,
+    })
+  })
+  res.json(users)
+})
+
 app.post('/posts', async (req, res) => {
   const post_name = req.body.post_name
   const post_url = req.body.post_url
