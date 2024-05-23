@@ -166,6 +166,20 @@ app.get('/posts', async (req, res) => {
   res.json(postsObj)
 })
 
+app.delete('/posts', (req, res) => {
+  const post_id = req.body.post_id
+  console.log(post_id)
+  try {
+    const delete_register = db.execute({
+      sql: 'DELETE FROM Posts WHERE post_id = :post_id',
+      args: { post_id },
+    })
+    res.send(delete_register)
+  } catch (e) {
+    console.error(e)
+  }
+})
+
 app.put('/update_checked', (req, res) => {
   console.log('Hola')
   console.log(req.body.value)
