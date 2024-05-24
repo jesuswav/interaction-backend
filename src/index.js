@@ -102,6 +102,15 @@ app.post('/personal', (req, res) => {
   const name = req.body.name
   console.log(req.body.name)
   try {
+    // const personalTrigger = db.execute(`
+    //   CREATE TRIGGER IF NOT EXISTS create_interactions_after_insert
+    //   AFTER INSERT ON Personal
+    //   FOR EACH ROW
+    //   BEGIN
+    //     INSERT INTO Interactions (personal_id, post_id)
+    //     SELECT NEW.personal_id, post_id FROM Posts;
+    //   END;
+    // `)
     const results = db.execute({
       sql: 'INSERT INTO Personal (name) VALUES (:name)',
       args: { name },
