@@ -5,10 +5,16 @@ const dotenv = require('dotenv')
 const { createClient } = require('@libsql/client')
 // import { createClient } from "@libsql/client"
 const cors = require('cors')
+const mysql = require('mysql')
+
+// Modulos externos con otras rutas
+const personal = require('./routes/personal')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+app.use('/api', personal)
 const PORT = process.env.port || 3000
 
 dotenv.config()
@@ -16,6 +22,120 @@ dotenv.config()
 const db = createClient({
   url: 'libsql://positive-screwball-jesuswav.turso.io',
   authToken: process.env.DB_TOKEN,
+})
+
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+})
+
+connection.connect((err) => {
+  if (err) {
+    console.error('Error al conectar a la base de datos:', err)
+    return
+  }
+  console.log('Conexión a la base de datos establecida.')
+})
+
+app.get('/personas', (req, res) => {
+  connection.query('SELECT * FROM Personal', (err, results) => {
+    if (err) {
+      console.error('Error al ejecutar la consulta: ', err)
+      res.status(500).send('Error al obtener los datos')
+    }
+    res.json(results)
+  })
+})
+
+app.get('/prueba_trigger', (req, res) => {
+  connection.query(
+    `
+    CREATE TRIGGER IF NOT EXISTS create_interactions_after_insert
+      AFTER INSERT ON Personal
+      FOR EACH ROW
+      BEGIN
+        INSERT INTO Interactions (personal_id, post_id)
+        SELECT NEW.personal_id, post_id FROM Posts;
+      END;
+  `,
+    (err, results) => {
+      if (err) {
+        console.error('Error al ejecutar la consulta: ', err)
+        res.status(500).send('Error al obtener los datos')
+      }
+      res.send('Consulta exitosa', results)
+    }
+  )
+})
+
+app.post('/publicaciones', (req, res) => {
+  const { post_name, url } = req.body
+  let last_post_id = 0
+
+  function generateRandomNumber() {
+    // Genera un número aleatorio entre 0 y 99999999
+    let randomNumber = Math.floor(Math.random() * 100000000)
+
+    // Asegura que el número tenga exactamente 8 dígitos
+    return String(randomNumber).padStart(8, '0')
+  }
+
+  // Obtener todos los personal_id de la tabla Personal
+  connection.query('SELECT personal_id FROM Personal', (err, results) => {
+    if (err) {
+      console.error('Error al obtener personal_id:', err)
+      return res.status(500).send('Error al obtener personal_id')
+    }
+    console.log(results)
+
+    // Insertar la nueva publicación en la tabla Posts
+    const newPostQuery =
+      'INSERT INTO Posts (post_id, post_name, url) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)'
+    connection.query(newPostQuery, [post_name, url], (err) => {
+      if (err) {
+        console.error('Error al insertar en Posts:', err)
+        return res.status(500).send('Error al insertar la publicación')
+      }
+
+      connection.query(
+        'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1',
+        (err, lastRegister) => {
+          if (err) {
+            console.error('Error en la petición', err)
+          } else {
+            console.log('Ultimo registro en la base de datos:')
+            console.log(lastRegister[0].post_id)
+            last_post_id = lastRegister[0].post_id
+
+            // Crear registros en la tabla Interactions para cada personal_id
+            console.log(results)
+            const interactions = results.map((row) => [
+              generateRandomNumber(),
+              row.personal_id,
+              last_post_id,
+            ])
+            console.log('Last post ID: ', last_post_id)
+            console.log('Interacciones: ', interactions)
+            const interactionsQuery =
+              'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
+
+            connection.query(interactionsQuery, [interactions], (err) => {
+              if (err) {
+                console.error('Error al insertar en Interactions:', err)
+                return res.status(500).send('Error al insertar en Interactions')
+              }
+
+              res
+                .status(201)
+                .send('Publicación y relaciones creadas exitosamente')
+            })
+          }
+        }
+      )
+    })
+  })
 })
 
 app.post('/registros', async (req, res) => {
@@ -210,3 +330,5 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor Corriendo en el puerto: ${PORT}`)
 })
+
+module.exports = connection
