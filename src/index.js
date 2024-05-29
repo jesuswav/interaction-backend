@@ -10,13 +10,14 @@ const mysql = require('mysql')
 // Modulos externos con otras rutas
 const personal = require('./routes/personal')
 const posts = require('./routes/posts')
+const teams = require('./routes/teams')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
 // midleware para los demás modulos de la aplicación
-app.use('/api', personal, posts)
+app.use('/api', personal, posts, teams)
 
 const PORT = process.env.port || 3000
 
