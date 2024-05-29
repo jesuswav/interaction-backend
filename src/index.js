@@ -9,12 +9,15 @@ const mysql = require('mysql')
 
 // Modulos externos con otras rutas
 const personal = require('./routes/personal')
+const posts = require('./routes/posts')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
-app.use('/api', personal)
+// midleware para los demás modulos de la aplicación
+app.use('/api', personal, posts)
+
 const PORT = process.env.port || 3000
 
 dotenv.config()
@@ -24,13 +27,13 @@ const db = createClient({
   authToken: process.env.DB_TOKEN,
 })
 
+// Conectar con la base de datos
 const connection = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
 })
-
 connection.connect((err) => {
   if (err) {
     console.error('Error al conectar a la base de datos:', err)
@@ -70,80 +73,12 @@ app.get('/prueba_trigger', (req, res) => {
   )
 })
 
-app.post('/publicaciones', (req, res) => {
-  const { post_name, url } = req.body
-  let last_post_id = 0
-
-  function generateRandomNumber() {
-    // Genera un número aleatorio entre 0 y 99999999
-    let randomNumber = Math.floor(Math.random() * 100000000)
-
-    // Asegura que el número tenga exactamente 8 dígitos
-    return String(randomNumber).padStart(8, '0')
-  }
-
-  // Obtener todos los personal_id de la tabla Personal
-  connection.query('SELECT personal_id FROM Personal', (err, results) => {
-    if (err) {
-      console.error('Error al obtener personal_id:', err)
-      return res.status(500).send('Error al obtener personal_id')
-    }
-    console.log(results)
-
-    // Insertar la nueva publicación en la tabla Posts
-    const newPostQuery =
-      'INSERT INTO Posts (post_id, post_name, url) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)'
-    connection.query(newPostQuery, [post_name, url], (err) => {
-      if (err) {
-        console.error('Error al insertar en Posts:', err)
-        return res.status(500).send('Error al insertar la publicación')
-      }
-
-      connection.query(
-        'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1',
-        (err, lastRegister) => {
-          if (err) {
-            console.error('Error en la petición', err)
-          } else {
-            console.log('Ultimo registro en la base de datos:')
-            console.log(lastRegister[0].post_id)
-            last_post_id = lastRegister[0].post_id
-
-            // Crear registros en la tabla Interactions para cada personal_id
-            console.log(results)
-            const interactions = results.map((row) => [
-              generateRandomNumber(),
-              row.personal_id,
-              last_post_id,
-            ])
-            console.log('Last post ID: ', last_post_id)
-            console.log('Interacciones: ', interactions)
-            const interactionsQuery =
-              'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
-
-            connection.query(interactionsQuery, [interactions], (err) => {
-              if (err) {
-                console.error('Error al insertar en Interactions:', err)
-                return res.status(500).send('Error al insertar en Interactions')
-              }
-
-              res
-                .status(201)
-                .send('Publicación y relaciones creadas exitosamente')
-            })
-          }
-        }
-      )
-    })
-  })
-})
-
+// ✅✅
 app.post('/registros', async (req, res) => {
   const date = req.body.date
   let usuariosConPublicaciones = {}
 
   try {
-    const name = 'Jesus'
     console.log('Ejecutando el try')
     const results = await db.execute({
       sql: `
@@ -202,6 +137,7 @@ app.post('/registros', async (req, res) => {
   res.json(Object.values(usuariosConPublicaciones))
 })
 
+// ⏰⏰
 app.get('/dates', async (req, res) => {
   const dates = await db.execute(`
   SELECT DISTINCT DATE(registerDate) AS registerDate
@@ -218,6 +154,7 @@ app.get('/dates', async (req, res) => {
   res.json(datesArray)
 })
 
+// ✅✅
 app.post('/personal', (req, res) => {
   const name = req.body.name
   console.log(req.body.name)
@@ -281,6 +218,7 @@ app.post('/posts', async (req, res) => {
   }
 })
 
+// ✅✅
 app.get('/posts', async (req, res) => {
   const posts = await db.execute('SELECT * FROM Posts;')
   const postsObj = []
@@ -295,6 +233,7 @@ app.get('/posts', async (req, res) => {
   res.json(postsObj)
 })
 
+// ✅✅
 app.delete('/posts', (req, res) => {
   const post_id = req.body.post_id
   console.log(post_id)
@@ -309,10 +248,8 @@ app.delete('/posts', (req, res) => {
   }
 })
 
+// ✅✅
 app.put('/update_checked', (req, res) => {
-  console.log('Hola')
-  console.log(req.body.value)
-
   const id = req.body.id
   const value = req.body.value
 
