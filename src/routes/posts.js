@@ -54,7 +54,7 @@ router.post('/user_posts', (req, res) => {
       if (err) {
         console.log('Error', err)
       }
-      results.forEach((row) => {
+      results?.forEach((row) => {
         console.log(
           row.personal_name,
           row.personal_id,

@@ -14,12 +14,22 @@ const connection = mysql.createConnection({
 
 // Obtener a todo el personal registrado
 router.get('/personal', (req, res) => {
-  connection.query('SELECT * FROM Personal', (err, results) => {
-    if (err) {
-      console.log('Error', err)
+  connection.query(
+    `
+    SELECT 
+      Personal.personal_id,
+      Personal.personal_name,
+      Teams.team_name
+    FROM Personal
+    INNER JOIN Teams ON Personal.team_id = Teams.team_id
+  `,
+    (err, results) => {
+      if (err) {
+        console.log('Error', err)
+      }
+      res.json(results)
     }
-    res.json(results)
-  })
+  )
 })
 
 // Registrar a alguien dentro del personal

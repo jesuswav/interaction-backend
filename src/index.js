@@ -11,13 +11,14 @@ const mysql = require('mysql')
 const personal = require('./routes/personal')
 const posts = require('./routes/posts')
 const teams = require('./routes/teams')
+const users = require('./routes/users')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
 // midleware para los demás modulos de la aplicación
-app.use('/api', personal, posts, teams)
+app.use('/api', personal, posts, teams, users)
 
 const PORT = process.env.port || 3000
 
