@@ -17,8 +17,37 @@ router.get('/teams', (req, res) => {
     if (err) {
       console.error('Error al obtener los Equipos', err)
     }
-    res.json(Object.values(results))
+
+    let teams = []
+
+    results.map((item) => {
+      teams.push({
+        value: item.team_id,
+        label: item.team_name,
+        color: item.team_color,
+      })
+    })
+
+    console.log(teams)
+
+    res.json(Object.values(teams))
   })
+})
+
+router.post('/teams', (req, res) => {
+  const team_name = req.body.team_name
+  const team_color = req.body.team_color
+
+  connection.query(
+    'INSERT INTO Teams (team_id, team_name, team_color) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)',
+    [team_name, team_color],
+    (err) => {
+      if (err) {
+        console.error('Error al registrar el equipo: ', err)
+      }
+      res.send('Equipo registrado exitosamente')
+    }
+  )
 })
 
 module.exports = router
