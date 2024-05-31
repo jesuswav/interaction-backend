@@ -50,4 +50,15 @@ router.post('/teams', (req, res) => {
   )
 })
 
+router.delete('/teams', (req, res) => {
+  const team_id = req.body.team_id
+
+  connection.query('DELETE FROM Teams WHERE team_id = ?', [team_id], (err) => {
+    if (err) {
+      console.error('Error al eliminar el Equipo: ', err)
+    }
+    res.send(Object.values({ team_id }))
+  })
+})
+
 module.exports = router

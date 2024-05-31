@@ -10,6 +10,7 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
+  charset: 'utf8mb4',
 })
 
 // Obtener todos los posts
@@ -37,7 +38,8 @@ router.post('/user_posts', (req, res) => {
       Posts.register_date,
       Interactions.checked,
       Interactions.unique_post AS unique_post_id,
-      Teams.team_name
+      Teams.team_name,
+      Teams.team_color
     FROM
       Personal
       INNER JOIN Teams ON Personal.team_id = Teams.team_id
@@ -62,7 +64,8 @@ router.post('/user_posts', (req, res) => {
           row.register_date,
           row.checked,
           row.unique_post_id,
-          row.team_name
+          row.team_name,
+          row.team_color
         )
 
         if (!usersWithPublications[row.personal_id]) {
@@ -71,6 +74,7 @@ router.post('/user_posts', (req, res) => {
             personal_id: row.personal_id,
             personal_name: row.personal_name,
             personal_team: row.team_name,
+            team_color: row.team_color,
             posts: [],
           }
         }
@@ -91,7 +95,7 @@ router.post('/user_posts', (req, res) => {
 
 // Para registrar un post y crear la relación con todos los usuarios de la DB
 router.post('/posts', (req, res) => {
-  const { post_name, url } = req.body
+  const { post_name, post_url } = req.body
   let last_post_id = 0
 
   function generateRandomNumber() {
@@ -113,7 +117,7 @@ router.post('/posts', (req, res) => {
     // Insertar la nueva publicación en la tabla Posts
     const newPostQuery =
       'INSERT INTO Posts (post_id, post_name, url) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)'
-    connection.query(newPostQuery, [post_name, url], (err) => {
+    connection.query(newPostQuery, [post_name, post_url], (err) => {
       if (err) {
         console.error('Error al insertar en Posts:', err)
         return res.status(500).send('Error al insertar la publicación')
@@ -149,7 +153,7 @@ router.post('/posts', (req, res) => {
 
               res
                 .status(201)
-                .send('Publicación y relaciones creadas exitosamente')
+                .json('Publicación y relaciones creadas exitosamente')
             })
           }
         }

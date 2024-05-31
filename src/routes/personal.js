@@ -19,9 +19,10 @@ router.get('/personal', (req, res) => {
     SELECT 
       Personal.personal_id,
       Personal.personal_name,
-      Teams.team_name
+      Teams.team_name,
+      Teams.team_color
     FROM Personal
-    INNER JOIN Teams ON Personal.team_id = Teams.team_id
+      INNER JOIN Teams ON Personal.team_id = Teams.team_id
   `,
     (err, results) => {
       if (err) {
@@ -34,19 +35,19 @@ router.get('/personal', (req, res) => {
 
 // Registrar a alguien dentro del personal
 router.post('/personal', (req, res) => {
-  const name = req.body.name
-  const team = '07289281'
-  console.log(req.body.name)
+  const personal_name = req.body.personal_name
+  const team_id = req.body.team_id
+  console.log(req.body.personal_name)
 
   connection.query(
     'INSERT INTO Personal (personal_id, personal_name, team_id) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?);',
-    [name, team],
+    [personal_name, team_id],
     (err) => {
       if (err) {
         console.error('Error al insertar en Posts:', err)
         return res.status(500).send('Error al insertar el registro')
       }
-      res.json(name)
+      res.json(personal_name)
     }
   )
 })

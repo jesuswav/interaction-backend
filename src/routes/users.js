@@ -28,7 +28,8 @@ router.post('/users', (req, res) => {
 })
 
 router.delete('/users', (req, res) => {
-  const personal_id = req.query.personal_id
+  const personal_id = req.body.personal_id
+  console.log(personal_id)
 
   connection.query(
     'DELETE FROM Personal WHERE personal_id = ?',
@@ -37,7 +38,7 @@ router.delete('/users', (req, res) => {
       if (err) {
         console.error('Error al borrar el registro ', err)
       }
-      res.send('Resultado borrado exitosamente')
+      res.json('Resultado borrado exitosamente')
     }
   )
 })
