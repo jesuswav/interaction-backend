@@ -3,6 +3,8 @@ const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
 
+const scrape = require('../utils/web-scraping')
+
 dotenv.config()
 
 const connection = mysql.createConnection({
@@ -42,4 +44,13 @@ router.delete('/users', (req, res) => {
     }
   )
 })
+
+router.get('/scrape', async (req, res) => {
+  const postInfo = await scrape(
+    'https://www.facebook.com/share/p/denWZ7obUeX4Kwzu/'
+  )
+
+  res.send(postInfo)
+})
+
 module.exports = router
