@@ -46,8 +46,15 @@ router.delete('/users', (req, res) => {
 })
 
 router.get('/scrape', async (req, res) => {
+  urls = [
+    'https://www.facebook.com/UTCalvillo/posts/pfbid02za96ZKkrXHJQ1CsY9SC7mxmTbrUtcgURws8d9AFR6RmCRk1fQhrMDRXCcvqs1Ldyl',
+    'https://www.facebook.com/UTCalvillo/posts/pfbid02FZ8H1B5izQSG4tdq1FkpVcUXzrKNdpWN84aRzNbpVeisMLy5xqVGK2sHic9sB7QJl',
+    'https://www.facebook.com/UTCalvillo/posts/pfbid023z933yzR64JPoEAp9qu5doXfJvM164vNTdux9VgK5htF1VjPp1MavYLAqPDH12Z1l',
+    'https://www.facebook.com/PuntoNocturnoPodcast/posts/pfbid0J2jpJ96d51Sh4Ak1Rgr8eAs5yr8VtjnvuVduvQiYWyZd5JngvrEGmUzPHNzaz3czl',
+    'https://www.facebook.com/share/p/denWZ7obUeX4Kwzu/',
+  ]
   const postInfo = await scrape(
-    'https://www.facebook.com/share/p/denWZ7obUeX4Kwzu/'
+    'https://www.facebook.com/PuntoNocturnoPodcast/posts/pfbid0J2jpJ96d51Sh4Ak1Rgr8eAs5yr8VtjnvuVduvQiYWyZd5JngvrEGmUzPHNzaz3czl'
   )
 
   res.send(postInfo)

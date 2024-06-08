@@ -10,6 +10,7 @@ async function scrape(url) {
   let driver = await new Builder().forBrowser('chrome').build()
 
   let post = {
+    post_id: '',
     description: '',
     likes: '',
     shared: '',
@@ -26,6 +27,14 @@ async function scrape(url) {
     await driver.get(url)
 
     await sleep(2000)
+
+    // Obtener id y asignarlo al arreglo
+    try {
+      const id = await getPostId(url)
+      post.post_id = id[0]
+    } catch {
+      console.log('Error al obtener el id del post.')
+    }
 
     try {
       const description = await getDescription(
@@ -87,6 +96,13 @@ async function scrape(url) {
   }
 }
 
+// Obtener el id del post
+const getPostId = async (url) => {
+  const result = url.match(/[^/]+$/)
+
+  return result
+}
+
 // Obtener la descripción del posts
 const getDescription = async (driver, element) => {
   // Elemento que contiene la descripción
@@ -94,7 +110,9 @@ const getDescription = async (driver, element) => {
 
   const textDescription = description.replace(/\n/g, ' ')
 
-  return textDescription
+  const standarDescription = textDescription.substring(0, 255)
+
+  return standarDescription
 }
 
 // Función para saber cuantos likes tiene una publicación
