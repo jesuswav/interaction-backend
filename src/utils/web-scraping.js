@@ -12,6 +12,7 @@ async function scrape(url) {
   let post = {
     post_id: '',
     description: '',
+    post_url: '',
     likes: '',
     shared: '',
     images: [],
@@ -26,7 +27,9 @@ async function scrape(url) {
     // Abre una página web
     await driver.get(url)
 
-    await sleep(2000)
+    await sleep(3000)
+
+    post.post_url = url
 
     // Obtener id y asignarlo al arreglo
     try {
@@ -83,10 +86,6 @@ async function scrape(url) {
       console.log('Este post no ha sido compartido')
       post.shared = 0
     }
-
-    // Imprime el valor de 'src'
-    console.log('Post info:', post)
-
     return post
   } catch (error) {
     console.error('Error:', error)
@@ -120,19 +119,42 @@ const getLikes = async (driver, element) => {
   // Obtener los likes de la publicación
   let likes = await driver.findElement(By.css(element)).getText()
 
-  // Comprobamos si la publicación tiene más de mil likes
-  const thousands = likes.slice(-3)
-
   // Obtenemos solo el número de likes, evitanto la nomenclatura
-  let likesNumber = parseInt(likes.match(/\d+/g).join(''))
-
-  // En caso de tener > 1000 likes multiplicamos por mil, el número que nos da la regular expression
-  if (thousands === 'mil') {
-    likesNumber = likesNumber * 1000
-    console.log('Holaaaaaa')
-  }
+  let likesNumber = convertNumber(likes)
 
   return likesNumber
+}
+
+function convertNumber(cadena) {
+  // Eliminar espacios en blanco al inicio y final de la cadena
+  cadena = cadena.trim()
+
+  // Remplazar coma por punto para manejar decimales
+  cadena = cadena.replace(',', '.')
+
+  // Expresiones regulares para diferentes casos
+  const regexMil = /^([\d.]+)\s*mil$/i
+  const regexMill = /^([\d.]+)\s*mill$/i
+  const regexSoloNumero = /^[\d.]+$/
+
+  if (regexMil.test(cadena)) {
+    // Si la cadena contiene "mil"
+    const match = cadena.match(regexMil)
+    const numero = parseFloat(match[1])
+    return Math.round(numero * 1000)
+  } else if (regexMill.test(cadena)) {
+    // Si la cadena contiene "mill" (millones)
+    const match = cadena.match(regexMill)
+    const numero = parseFloat(match[1])
+    return Math.round(numero * 1000000)
+  } else if (regexSoloNumero.test(cadena)) {
+    // Si la cadena es solo un número
+    const numero = parseFloat(cadena)
+    return Math.round(numero)
+  } else {
+    // Si la cadena no coincide con ningún formato esperado, retornar null o lanzar un error
+    return null
+  }
 }
 
 // Función para obtener las veces que ha sido compartida una publicación

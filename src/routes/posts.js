@@ -3,6 +3,8 @@ const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
 
+const scrape = require('../utils/web-scraping')
+
 dotenv.config()
 
 const connection = mysql.createConnection({
@@ -131,8 +133,8 @@ router.post('/user_posts', (req, res) => {
 })
 
 // Para registrar un post y crear la relación con todos los usuarios de la DB
-router.post('/posts', (req, res) => {
-  const { post_name, post_url } = req.body
+router.post('/posts', async (req, res) => {
+  const post_url = req.body.post_url
   let last_post_id = 0
 
   function generateRandomNumber() {
@@ -142,6 +144,17 @@ router.post('/posts', (req, res) => {
     // Asegura que el número tenga exactamente 8 dígitos
     return String(randomNumber).padStart(8, '0')
   }
+
+  const postToCreate = await scrape(post_url)
+
+  console.log(postToCreate)
+  console.log(post_url)
+
+  const images = []
+
+  postToCreate.images.forEach((item) =>
+    images.push([generateRandomNumber(), postToCreate.post_id, item])
+  )
 
   // Obtener todos los personal_id de la tabla Personal
   connection.query('SELECT personal_id FROM Personal', (err, results) => {
@@ -153,49 +166,78 @@ router.post('/posts', (req, res) => {
 
     // Insertar la nueva publicación en la tabla Posts
     const newPostQuery =
-      'INSERT INTO Posts (post_id, post_name, url) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)'
-    connection.query(newPostQuery, [post_name, post_url], (err) => {
-      if (err) {
-        console.error('Error al insertar en Posts:', err)
-        return res.status(500).send('Error al insertar la publicación')
-      }
-
-      connection.query(
-        'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1',
-        (err, lastRegister) => {
-          if (err) {
-            console.error('Error en la petición', err)
-          } else {
-            console.log('Ultimo registro en la base de datos:')
-            console.log(lastRegister[0].post_id)
-            last_post_id = lastRegister[0].post_id
-
-            // Crear registros en la tabla Interactions para cada personal_id
-            console.log(results)
-            const interactions = results.map((row) => [
-              generateRandomNumber(),
-              row.personal_id,
-              last_post_id,
-            ])
-            console.log('Last post ID: ', last_post_id)
-            console.log('Interacciones: ', interactions)
-            const interactionsQuery =
-              'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
-
-            connection.query(interactionsQuery, [interactions], (err) => {
-              if (err) {
-                console.error('Error al insertar en Interactions:', err)
-                return res.status(500).send('Error al insertar en Interactions')
-              }
-
-              res
-                .status(201)
-                .json('Publicación y relaciones creadas exitosamente')
-            })
-          }
+      'INSERT INTO Posts (post_id, post_description, post_url, likes, shared) VALUES (?, ?, ?, ?, ?)'
+    connection.query(
+      newPostQuery,
+      [
+        postToCreate.post_id,
+        postToCreate.description,
+        postToCreate.post_url,
+        postToCreate.likes,
+        postToCreate.shared,
+      ],
+      (err) => {
+        if (err) {
+          console.error('Error al insertar en Posts:', err)
+          return res.status(500).send('Error al insertar la publicación')
         }
-      )
-    })
+
+        connection.query(
+          'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1',
+          (err, lastRegister) => {
+            if (err) {
+              console.error('Error en la petición', err)
+            } else {
+              last_post_id = lastRegister[0].post_id
+
+              // Crear registros en la tabla Interactions para cada personal_id
+              const interactions = results.map((row) => [
+                generateRandomNumber(),
+                row.personal_id,
+                last_post_id,
+              ])
+              const interactionsQuery =
+                'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
+
+              connection.query(interactionsQuery, [interactions], (err) => {
+                if (err) {
+                  console.error('Error al insertar en Interactions:', err)
+                  return res
+                    .status(500)
+                    .send('Error al insertar en Interactions')
+                }
+
+                const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
+                  .map(() => '(?, ?, ?)')
+                  .join(', ')}`
+
+                const flattenedImages = images.flat()
+
+                connection.query(
+                  imagesQuery,
+                  flattenedImages,
+                  (err, result) => {
+                    if (err) {
+                      console.log(
+                        'Error al registrar las imagenes en la base de datos.'
+                      )
+                      console.log(err)
+                      return res
+                        .status(500)
+                        .send('Error al insertar las imagenes en la DB.')
+                    }
+                  }
+                )
+
+                res
+                  .status(201)
+                  .json('Publicación y relaciones creadas exitosamente')
+              })
+            }
+          }
+        )
+      }
+    )
   })
 })
 
