@@ -26,6 +26,35 @@ router.get('/users', (req, res) => {
   })
 })
 
+router.post('/user', (req, res) => {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
+
+  if (!token) {
+    return res.sendStatus(401)
+  }
+
+  const secretKey = 'secret-key'
+
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      return res.sendStatus(403)
+    }
+
+    connection.query(
+      'SELECT * FROM Users WHERE username = ?',
+      user.username,
+      (err, results) => {
+        if (err) {
+          return res.status(400).json({ message: 'Usuario no encontrado' })
+        }
+
+        res.json(Object.values(results))
+      }
+    )
+  })
+})
+
 router.post('/users', async (req, res) => {
   const { username, name, last_name, password } = req.body
 
@@ -94,8 +123,6 @@ router.post('/login', (req, res) => {
 
     const token = jwt.sign(userForToken, secretKey)
 
-    console.log(token)
-
     // res.cookie('token', token, {
     //   httpOnly: true,
     //   secure: true,
@@ -106,31 +133,8 @@ router.post('/login', (req, res) => {
   })
 })
 
-// Verificar si esta iniciada la sesión en el cliente
-const verifyToken = (req, res, next) => {
-  const token = req.cookies.token
-  console.log('Verify', token)
-
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized token' })
-  }
-
-  const secretKey = 'secret-key'
-
-  jwt.verify(token, secretKey, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' })
-    }
-
-    req.user = user
-    next()
-  })
-}
-
 router.post('/verify', (req, res) => {
   const token = req.body.loginToken
-
-  console.log('Token: ', req.body.loginToken)
 
   if (!token) {
     return res.status(401).json({ message: 'Unauthorized token' })
