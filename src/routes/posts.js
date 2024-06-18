@@ -2,6 +2,7 @@ const express = require('express')
 const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
+const generateRandomNumber = require('../utils/generateRandomNumber')
 
 const scrape = require('../utils/web-scraping')
 
@@ -92,17 +93,6 @@ router.post('/user_posts', (req, res) => {
         console.log('Error', err)
       }
       results?.forEach((row) => {
-        console.log(
-          row.personal_name,
-          row.personal_id,
-          row.post_description,
-          row.post_id,
-          row.checked,
-          row.unique_post_id,
-          row.team_name,
-          row.team_color
-        )
-
         //   WHERE
         // DATE(Posts.register_date) = ?
 
@@ -136,14 +126,6 @@ router.post('/user_posts', (req, res) => {
 router.post('/posts', async (req, res) => {
   const post_url = req.body.post_url
   let last_post_id = 0
-
-  function generateRandomNumber() {
-    // Genera un número aleatorio entre 0 y 99999999
-    let randomNumber = Math.floor(Math.random() * 100000000)
-
-    // Asegura que el número tenga exactamente 8 dígitos
-    return String(randomNumber).padStart(8, '0')
-  }
 
   const postToCreate = await scrape(post_url)
 
