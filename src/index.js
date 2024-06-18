@@ -6,6 +6,8 @@ const { createClient } = require('@libsql/client')
 // import { createClient } from "@libsql/client"
 const cors = require('cors')
 const mysql = require('mysql')
+const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
 
 // Modulos externos con otras rutas
 const personal = require('./routes/personal')
@@ -16,6 +18,8 @@ const users = require('./routes/users')
 const app = express()
 app.use(cors())
 app.use(express.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cookieParser())
 
 // midleware para los demás modulos de la aplicación
 app.use('/api', personal, posts, teams, users)
