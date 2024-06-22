@@ -21,7 +21,6 @@ router.get('/teams', (req, res) => {
 
     let teams = []
 
-    console.log(results)
     if (results.length === 0) {
       console.log('There are no users')
       return res.json(teams)
