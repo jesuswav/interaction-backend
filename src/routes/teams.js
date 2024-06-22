@@ -2,6 +2,7 @@ const express = require('express')
 const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
+const jwt = require('jsonwebtoken')
 
 dotenv.config()
 
@@ -20,7 +21,11 @@ router.get('/teams', (req, res) => {
 
     let teams = []
 
-    try {
+    console.log(results)
+    if (results.length === 0) {
+      console.log('There are no users')
+      return res.json(teams)
+    } else {
       results.map((item) => {
         teams.push({
           value: item.team_id,
@@ -28,28 +33,39 @@ router.get('/teams', (req, res) => {
           color: item.team_color,
         })
       })
-    } catch (e) {
-      return res.status(500).json({ message: 'Internal serevr error' })
-    }
 
-    res.json(Object.values(teams))
+      res.json(Object.values(teams))
+    }
   })
 })
 
 router.post('/teams', (req, res) => {
   const team_name = req.body.team_name
   const team_color = req.body.team_color
+  const user_token = req.headers.authorization
 
-  connection.query(
-    'INSERT INTO Teams (team_id, team_name, team_color) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?)',
-    [team_name, team_color],
-    (err) => {
-      if (err) {
-        console.error('Error al registrar el equipo: ', err)
-      }
-      res.send('Equipo registrado exitosamente')
+  const token_ready = user_token.substring(7)
+
+  console.log(token_ready)
+
+  jwt.verify(token_ready, process.env.SECRET_KEY, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid token' })
     }
-  )
+
+    const user_id = user.user_id
+
+    connection.query(
+      'INSERT INTO Teams (team_id, team_name, team_color, user_id) VALUES (LPAD(FLOOR(RAND() * 100000000), 8, "0"), ?, ?, ?)',
+      [team_name, team_color, user_id],
+      (err) => {
+        if (err) {
+          console.error('Error al registrar el equipo: ', err)
+        }
+        res.send('Equipo registrado exitosamente')
+      }
+    )
+  })
 })
 
 router.delete('/teams', (req, res) => {

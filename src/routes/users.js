@@ -120,9 +120,7 @@ router.post('/login', (req, res) => {
       username: results[0].username,
     }
 
-    const secretKey = 'secret-key'
-
-    const token = jwt.sign(userForToken, secretKey)
+    const token = jwt.sign(userForToken, process.env.SECRET_KEY)
 
     // res.cookie('token', token, {
     //   httpOnly: true,
@@ -137,13 +135,13 @@ router.post('/login', (req, res) => {
 router.post('/verify', (req, res) => {
   const token = req.body.loginToken
 
+  console.log(token)
+
   if (!token) {
     return res.status(401).json({ message: 'Unauthorized token' })
   }
 
-  const secretKey = 'secret-key'
-
-  jwt.verify(token, secretKey, (err, user) => {
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid token' })
     }
