@@ -20,15 +20,17 @@ router.get('/teams', (req, res) => {
 
     let teams = []
 
-    results.map((item) => {
-      teams.push({
-        value: item.team_id,
-        label: item.team_name,
-        color: item.team_color,
+    try {
+      results.map((item) => {
+        teams.push({
+          value: item.team_id,
+          label: item.team_name,
+          color: item.team_color,
+        })
       })
-    })
-
-    console.log(teams)
+    } catch (e) {
+      return res.status(500).json({ message: 'Internal serevr error' })
+    }
 
     res.json(Object.values(teams))
   })

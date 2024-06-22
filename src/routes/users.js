@@ -56,7 +56,7 @@ router.post('/user', (req, res) => {
 })
 
 router.post('/users', async (req, res) => {
-  const { username, name, last_name, password } = req.body
+  const { username, name, last_name, phone_number, password } = req.body
 
   if (!username || !password) {
     return res
@@ -70,12 +70,13 @@ router.post('/users', async (req, res) => {
 
     // Generamos un número de 8 digitos para el user_id
     const user_id = generateRandomNumber()
+    console.log(hashed_pass)
 
     const query =
-      'INSERT INTO Users (user_id, username, name, last_name, password_hash) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO Users (user_id, username, name, last_name, phone_number, password_hash) VALUES (?, ?, ?, ?, ?, ?)'
     connection.query(
       query,
-      [user_id, username, name, last_name, hashed_pass],
+      [user_id, username, name, last_name, phone_number, hashed_pass],
       (err) => {
         if (err) {
           return res
