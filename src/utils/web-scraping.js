@@ -1,4 +1,9 @@
 const { Builder, By } = require('selenium-webdriver')
+const chrome = require('selenium-webdriver/chrome')
+
+const options = new chrome.Options()
+options.addArguments('headless')
+options.addArguments('disable-gpu')
 
 // Esperar a que la pagina termine de cargar para garantizar que exista la clase
 function sleep(ms) {

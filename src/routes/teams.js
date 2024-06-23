@@ -14,27 +14,45 @@ const connection = mysql.createConnection({
 })
 
 router.get('/teams', (req, res) => {
-  connection.query('SELECT * FROM Teams', (err, results) => {
+  const header_token = req.headers.authorization
+
+  console.log('Header token', header_token)
+
+  const token = header_token.substring(7)
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
     if (err) {
-      console.error('Error al obtener los Equipos', err)
+      return res.status(403).json({ message: 'Invalid token' })
     }
 
-    let teams = []
+    const user_id = user.user_id
 
-    if (results.length === 0) {
-      console.log('There are no users')
-      return res.json(teams)
-    } else {
-      results.map((item) => {
-        teams.push({
-          value: item.team_id,
-          label: item.team_name,
-          color: item.team_color,
-        })
-      })
+    connection.query(
+      'SELECT * FROM Teams WHERE user_id = ?',
+      [user_id],
+      (err, results) => {
+        if (err) {
+          console.error('Error al obtener los Equipos', err)
+        }
 
-      res.json(Object.values(teams))
-    }
+        let teams = []
+
+        if (results.length === 0) {
+          console.log('There are no users')
+          return res.json(teams)
+        } else {
+          results.map((item) => {
+            teams.push({
+              value: item.team_id,
+              label: item.team_name,
+              color: item.team_color,
+            })
+          })
+
+          res.json(Object.values(teams))
+        }
+      }
+    )
   })
 })
 
