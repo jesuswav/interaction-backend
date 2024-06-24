@@ -78,10 +78,19 @@ router.get('/posts', (req, res) => {
 // para obtener los posts que le corresponden a cada persona
 router.post('/user_posts', (req, res) => {
   const date = req.body.date
-  var usersWithPublications = {}
+  const header_token = req.headers.authorization
 
-  connection.query(
-    `
+  const token = header_token.substring(7)
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid token' })
+    }
+
+    var usersWithPublications = {}
+
+    connection.query(
+      `
       SELECT
       Personal.personal_id,
       Personal.personal_name,
@@ -96,44 +105,45 @@ router.post('/user_posts', (req, res) => {
       INNER JOIN Teams ON Personal.team_id = Teams.team_id
       LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
       LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
-    
+    WHERE Posts.user_id = ?
     ORDER BY
       Personal.personal_id,
       Posts.post_id;
   `,
-
-    (err, results) => {
-      if (err) {
-        console.log('Error', err)
-      }
-      results?.forEach((row) => {
-        //   WHERE
-        // DATE(Posts.register_date) = ?
-
-        // [date],
-
-        if (!usersWithPublications[row.personal_id]) {
-          // Si no existe, crea una nueva entrada para el usuario
-          usersWithPublications[row.personal_id] = {
-            personal_id: row.personal_id,
-            personal_name: row.personal_name,
-            personal_team: row.team_name,
-            team_color: row.team_color,
-            posts: [],
-          }
+      [user.user_id],
+      (err, results) => {
+        if (err) {
+          console.log('Error', err)
         }
+        results?.forEach((row) => {
+          //   WHERE
+          // DATE(Posts.register_date) = ?
 
-        // Añade la publicación actual al array de publicaciones del usuario
-        usersWithPublications[row.personal_id].posts.push({
-          post_id: row.post_id,
-          post_description: row.post_description,
-          checked: row.checked,
-          unique_post_id: row.unique_post_id,
+          // [date],
+
+          if (!usersWithPublications[row.personal_id]) {
+            // Si no existe, crea una nueva entrada para el usuario
+            usersWithPublications[row.personal_id] = {
+              personal_id: row.personal_id,
+              personal_name: row.personal_name,
+              personal_team: row.team_name,
+              team_color: row.team_color,
+              posts: [],
+            }
+          }
+
+          // Añade la publicación actual al array de publicaciones del usuario
+          usersWithPublications[row.personal_id].posts.push({
+            post_id: row.post_id,
+            post_description: row.post_description,
+            checked: row.checked,
+            unique_post_id: row.unique_post_id,
+          })
         })
-      })
-      res.json(Object.values(usersWithPublications))
-    }
-  )
+        res.json(Object.values(usersWithPublications))
+      }
+    )
+  })
 })
 
 router.post('/prueba', async (req, res) => {
