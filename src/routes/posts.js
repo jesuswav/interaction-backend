@@ -14,7 +14,7 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  charset: 'utf8mb4',
+  connectTimeout: 60000,
 })
 
 // Obtener todos los posts
@@ -171,10 +171,18 @@ router.post('/posts', async (req, res) => {
       return res.status(403).json({ message: 'Invalid token' })
     }
 
+    // Creamos el array para registrar las imagenes de la publicacion
     const images = []
 
     postToCreate.images.forEach((item) =>
       images.push([generateRandomNumber(), postToCreate.post_id, item])
+    )
+
+    // Creamos el array para registrar la lista de personas que dieron like a la publicacion
+    const postLikesList = []
+
+    postToCreate.likesList.forEach((item) =>
+      postLikesList.push([generateRandomNumber(), item, postToCreate.post_id])
     )
 
     // Obtener todos los personal_id de la tabla Personal
@@ -260,6 +268,28 @@ router.post('/posts', async (req, res) => {
                             .status(500)
                             .send('Error al insertar las imagenes en la DB.')
                         }
+
+                        const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
+                          .map(() => '(?, ?, ?)')
+                          .join(', ')}`
+
+                        const flattenedLikes = postLikesList.flat()
+
+                        connection.query(
+                          likesListQuery,
+                          flattenedLikes,
+                          (err) => {
+                            if (err) {
+                              console.log(
+                                'Error al registrar la lista de likes en la base de datos.'
+                              )
+                              console.log(err)
+                              return res
+                                .status(500)
+                                .send('Error al insertar los likes en la DB.')
+                            }
+                          }
+                        )
                       }
                     )
 

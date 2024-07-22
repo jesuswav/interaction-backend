@@ -11,12 +11,11 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
+  connectTimeout: 60000,
 })
 
 router.get('/teams', (req, res) => {
   const header_token = req.headers.authorization
-
-  console.log('Header token', header_token)
 
   const token = header_token.substring(7)
 
