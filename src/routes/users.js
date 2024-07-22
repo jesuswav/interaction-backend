@@ -15,6 +15,7 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
+  connectTimeout: 60000,
 })
 
 router.get('/users', (req, res) => {
@@ -27,16 +28,17 @@ router.get('/users', (req, res) => {
 })
 
 router.post('/user', (req, res) => {
-  const authHeader = req.headers['authorization']
-  const token = authHeader && authHeader.split(' ')[1]
+  const authHeader = req.headers.authorization
+
+  const token = authHeader.substring(7)
+
+  console.log(token)
 
   if (!token) {
     return res.sendStatus(401)
   }
 
-  const secretKey = 'secret-key'
-
-  jwt.verify(token, secretKey, (err, user) => {
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
     if (err) {
       return res.sendStatus(403)
     }
@@ -56,7 +58,7 @@ router.post('/user', (req, res) => {
 })
 
 router.post('/users', async (req, res) => {
-  const { username, name, last_name, password } = req.body
+  const { username, name, last_name, phone_number, password } = req.body
 
   if (!username || !password) {
     return res
@@ -70,12 +72,13 @@ router.post('/users', async (req, res) => {
 
     // Generamos un número de 8 digitos para el user_id
     const user_id = generateRandomNumber()
+    console.log(hashed_pass)
 
     const query =
-      'INSERT INTO Users (user_id, username, name, last_name, password_hash) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO Users (user_id, username, name, last_name, phone_number, password_hash) VALUES (?, ?, ?, ?, ?, ?)'
     connection.query(
       query,
-      [user_id, username, name, last_name, hashed_pass],
+      [user_id, username, name, last_name, phone_number, hashed_pass],
       (err) => {
         if (err) {
           return res
@@ -119,9 +122,7 @@ router.post('/login', (req, res) => {
       username: results[0].username,
     }
 
-    const secretKey = 'secret-key'
-
-    const token = jwt.sign(userForToken, secretKey)
+    const token = jwt.sign(userForToken, process.env.SECRET_KEY)
 
     // res.cookie('token', token, {
     //   httpOnly: true,
@@ -136,13 +137,13 @@ router.post('/login', (req, res) => {
 router.post('/verify', (req, res) => {
   const token = req.body.loginToken
 
+  console.log(token)
+
   if (!token) {
     return res.status(401).json({ message: 'Unauthorized token' })
   }
 
-  const secretKey = 'secret-key'
-
-  jwt.verify(token, secretKey, (err, user) => {
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid token' })
     }
