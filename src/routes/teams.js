@@ -1,18 +1,10 @@
 const express = require('express')
-const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
+const connection = require('../utils/dbConnection')
 
 dotenv.config()
-
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  connectTimeout: 60000,
-})
 
 router.get('/teams', (req, res) => {
   const header_token = req.headers.authorization

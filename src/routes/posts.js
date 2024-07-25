@@ -1,21 +1,13 @@
 const express = require('express')
-const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
-const generateRandomNumber = require('../utils/generateRandomNumber')
 const jwt = require('jsonwebtoken')
+const generateRandomNumber = require('../utils/generateRandomNumber')
+const connection = require('../utils/dbConnection')
 
 const scrape = require('../utils/web-scraping')
 
 dotenv.config()
-
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  connectTimeout: 60000,
-})
 
 // Obtener todos los posts
 router.get('/posts', (req, res) => {

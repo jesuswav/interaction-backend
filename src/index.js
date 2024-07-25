@@ -5,7 +5,8 @@ const dotenv = require('dotenv')
 const { createClient } = require('@libsql/client')
 // import { createClient } from "@libsql/client"
 const cors = require('cors')
-const mysql = require('mysql')
+// const mysql = require('mysql')
+const mysql = require('mysql2')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 
@@ -14,6 +15,7 @@ const personal = require('./routes/personal')
 const posts = require('./routes/posts')
 const teams = require('./routes/teams')
 const users = require('./routes/users')
+const connection = require('./utils/dbConnection')
 
 const app = express()
 app.use(cors())
@@ -31,15 +33,6 @@ dotenv.config()
 const db = createClient({
   url: 'libsql://positive-screwball-jesuswav.turso.io',
   authToken: process.env.DB_TOKEN,
-})
-
-// Conectar con la base de datos
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  connectTimeout: 120000,
 })
 
 connection.connect((err) => {
