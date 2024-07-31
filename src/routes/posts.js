@@ -212,6 +212,8 @@ router.post('/posts', async (req, res) => {
 
   const postToCreate = await scrape(post_url)
 
+  console.log(postToCreate)
+
   const token = header_token.substring(7)
 
   jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
@@ -222,7 +224,7 @@ router.post('/posts', async (req, res) => {
     // Creamos el array para registrar las imagenes de la publicacion
     const images = []
 
-    postToCreate.images.forEach((item) =>
+    postToCreate?.images.forEach((item) =>
       images.push([generateRandomNumber(), postToCreate.post_id, item])
     )
 

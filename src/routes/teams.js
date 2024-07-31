@@ -28,11 +28,11 @@ router.get('/teams', (req, res) => {
 
         let teams = []
 
-        if (results.length === 0) {
+        if (results?.length === 0) {
           console.log('There are no users')
           return res.json(teams)
         } else {
-          results.map((item) => {
+          results?.map((item) => {
             teams.push({
               value: item.team_id,
               label: item.team_name,
