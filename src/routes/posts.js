@@ -135,7 +135,6 @@ router.post('/user_posts', (req, res) => {
           if (err) {
             console.log(err)
           }
-          console.log(postsWithLikes)
 
           results?.forEach((row) => {
             //   WHERE
@@ -184,8 +183,6 @@ router.post('/user_posts', (req, res) => {
               })
             })
           })
-
-          console.log(usersWithPublications)
 
           res.json(Object.values(usersWithPublications))
         })

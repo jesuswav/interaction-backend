@@ -44,6 +44,17 @@ connection.connect((err) => {
   }
 })
 
+setInterval(() => {
+  console.log('Keep alive')
+  connection.query('SELECT 1', (err) => {
+    if (err) {
+      console.error('Error en la consulta de keep-alive:', err)
+      connection.end()
+      // connectToDatabase() // Reconectar si hay un error en la consulta de keep-alive
+    }
+  })
+}, 30000)
+
 app.listen(PORT, () => {
   console.log(`Servidor Corriendo en el puerto: ${PORT}`)
 })
