@@ -1,22 +1,13 @@
 const express = require('express')
-const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
+const connection = require('../utils/dbConnection')
 
 dotenv.config()
 
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-})
-
 router.get('/teams', (req, res) => {
   const header_token = req.headers.authorization
-
-  console.log('Header token', header_token)
 
   const token = header_token.substring(7)
 
@@ -37,11 +28,11 @@ router.get('/teams', (req, res) => {
 
         let teams = []
 
-        if (results.length === 0) {
+        if (results?.length === 0) {
           console.log('There are no users')
           return res.json(teams)
         } else {
-          results.map((item) => {
+          results?.map((item) => {
             teams.push({
               value: item.team_id,
               label: item.team_name,

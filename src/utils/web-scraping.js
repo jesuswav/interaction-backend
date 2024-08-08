@@ -29,6 +29,7 @@ async function scrape(url) {
     likes: '',
     shared: '',
     images: [],
+    likesList: [],
   }
 
   const url1 = 'https://www.facebook.com/share/p/denWZ7obUeX4Kwzu/'
@@ -106,7 +107,7 @@ async function scrape(url) {
       // x1lq5wgf xgqcy7u x30kzoy x9jhf4c x1lliihq
 
       try {
-        getLikesList(driver)
+        post.likesList = await getLikesList(driver)
       } catch {
         console.log('Error al obtener la lista de los likes')
       }
@@ -147,7 +148,7 @@ const login = async (driver) => {
     // Cerrar ventana
     const close = await driver.findElement(
       By.css(
-        'div.x1i10hfl.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x1ypdohk.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.x16tdsg8.x1hl2dhg.xggy1nq.x87ps6o.x1lku1pv.x1a2a7pz.x6s0dn4.xzolkzo.x12go9s9.x1rnf11y.xprq8jg.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x78zum5.xl56j7k.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x1n2onr6.xc9qbxq.x14qfxbe.x1qhmfi1'
+        '.x1i10hfl.xjqpnuy.xa49m3k.xqeqjp1.x2hbi6w.x13fuv20.xu3j5b3.x1q0q8m5.x26u7qi.x1ypdohk.xdl72j9.x2lah0s.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.x2lwn1j.xeuugli.x16tdsg8.x1hl2dhg.xggy1nq.x1ja2u2z.x1t137rt.x1q0g3np.x87ps6o.x1lku1pv.x1a2a7pz.x6s0dn4.xzolkzo.x12go9s9.x1rnf11y.xprq8jg.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x78zum5.xl56j7k.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x1n2onr6.xc9qbxq.x14qfxbe.x1qhmfi1'
       )
     )
 
@@ -199,25 +200,99 @@ const getLikesList = async (driver) => {
     await driver.wait(until.elementIsVisible(element), 10000)
     await driver.wait(until.elementIsEnabled(element), 10000)
 
+    sleep(6000)
+
     await element.click()
     console.log('Elemento clicado exitosamente 2.')
 
-    let userListCard = await driver.findElements(
+    sleep(6000)
+
+    let container = await driver.findElements(
       By.css(
-        'div.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
+        // '.__fb-light-mode.x1bhdrnm.xf2yzuf.xfvmy8p.x583dml.x1n2onr6.xzkaem6'
+        '.__fb-light-mode.x18whdkh.x1p4z1cd.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
       )
     )
 
-    // userListCard.getText()
+    await sleep(4000)
 
-    // await driver.wait(until.elementIsVisible(userListCard), 10000)
+    // Comprobar si existe al menos un elemento con la clase especificada
+    if (container.length > 0) {
+      // Definir el selector del elemento
+      let selector = By.css(
+        '.xb57i2i.x1q594ok.x5lxg6s.x78zum5.xdt5ytf.x6ikm8r.x1ja2u2z.x1pq812k.x1rohswg.xfk6m8.x1yqm8si.xjx87ck.xx8ngbg.xwo3gff.x1n2onr6.x1oyok0e.x1odjw0f.x1iyjqo2.xy5w88m'
+      )
 
-    console.log(userListCard)
+      // Esperar hasta que el elemento sea visible
+      await driver.wait(
+        until.elementIsVisible(driver.findElement(selector)),
+        10000
+      )
+
+      // Encontrar el elemento
+      let scrollElement = await driver.findElement(selector)
+
+      // Hacer scroll hasta el final del elemento
+      await driver.executeScript(
+        'arguments[0].scrollTop = arguments[0].scrollHeight;',
+        scrollElement
+      )
+
+      await sleep(5000)
+
+      await driver.wait(
+        until.elementLocated(
+          By.css(
+            '.x193iq5w.xeuugli.x13faqbe.x1vvkbs.x1xmvt09.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.xudqn12.x3x7a5m.x6prxxf.xvq8zen.xk50ysn.xzsf02u.x1yc453h'
+            // '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
+            // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
+          )
+        ),
+        2000
+      )
+
+      sleep(10000)
+
+      let elementos = await driver.findElements(
+        By.css(
+          // '.x78zum5.xdt5ytf.x1iyjqo2.x1n2onr6'
+          // '.x78zum5.xdt5ytf.xz62fqu.x16ldp7u'
+          // '.x6s0dn4.xkh2ocl.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1q0g3np.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x18d9i69.x4uap5.xkhd6sd.xexx8yu.x1n2onr6.x1ja2u2z'
+          // ':r1o:'
+          '.x193iq5w.xeuugli.x13faqbe.x1vvkbs.x1xmvt09.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.xudqn12.x3x7a5m.x6prxxf.xvq8zen.xk50ysn.xzsf02u.x1yc453h'
+          // 2 - '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
+          // '.x1qjc9v5.x78zum5.xdt5ytf.x1n2onr6.x1al4vs7.x1jx94hy.xrjkcco.x58fqnu.x1mh14rs.xfkwgsy.x104qc98.x1gj8qfm.x1iyjqo2.x6ikm8r.x10wlt62.x1likypf.xzit4ce.x1e9k66k.x12l8kdc'
+          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
+          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
+          // '.x6s0dn4.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1q0g3np.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.xeuugli.x18d9i69.x1sxyh0.xurb0ha.xexx8yu.x1n2onr6.x1ja2u2z.x1gg8mnh'
+          // '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
+          // 'span[id=":r3q:"]'
+          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
+        )
+      )
+
+      sleep(3000)
+
+      // Crear un array para almacenar los textos
+      let textos = []
+
+      // Iterar sobre los elementos y obtener el texto de cada uno
+      for (let elemento of elementos) {
+        let texto = await elemento.getText()
+        textos.push(texto)
+      }
+
+      // Mostrar el array de textos en la consola
+      console.log(textos)
+      return textos
+    } else {
+      console.log('El elemento no existe en la página.')
+    }
   } catch (error) {
     console.error('Error al interactuar con el elemento:', error)
   } finally {
     // Cerrar el navegador
-    // await driver.quit()
+    await driver.quit()
   }
 }
 

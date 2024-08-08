@@ -1,21 +1,13 @@
 const express = require('express')
-const mysql = require('mysql')
 const dotenv = require('dotenv')
 const router = express.Router()
-const generateRandomNumber = require('../utils/generateRandomNumber')
 const jwt = require('jsonwebtoken')
+const generateRandomNumber = require('../utils/generateRandomNumber')
+const connection = require('../utils/dbConnection')
 
 const scrape = require('../utils/web-scraping')
 
 dotenv.config()
-
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  charset: 'utf8mb4',
-})
 
 // Obtener todos los posts
 router.get('/posts', (req, res) => {
@@ -33,8 +25,8 @@ router.get('/posts', (req, res) => {
     connection.query(
       `
     SELECT 
-    Posts.post_id,
-    Posts.post_description,
+      Posts.post_id,
+      Posts.post_description,
       Posts.post_url,
       Posts.likes,
       Posts.shared,
@@ -50,6 +42,7 @@ router.get('/posts', (req, res) => {
         if (err) {
           console.error('Error al obtener los Posts', err)
         }
+
         results.forEach((row) => {
           // console.log(row.post_id, row.shared, row.likes, row.post_description)
 
@@ -61,12 +54,17 @@ router.get('/posts', (req, res) => {
               likes: row.likes,
               shared: row.shared,
               images: [],
+              likesList: [],
             }
           }
 
           posts[row.post_id].images.push({
             image_id: row.image_id,
             image_url: row.image_url,
+          })
+
+          posts[row.post_id].likesList.push({
+            like_name: row.like_name,
           })
         })
         res.json(Object.values(posts))
@@ -92,55 +90,102 @@ router.post('/user_posts', (req, res) => {
     connection.query(
       `
       SELECT
-      Personal.personal_id,
-      Personal.personal_name,
-      Posts.post_id,
-      Posts.post_description,
-      Interactions.checked,
-      Interactions.unique_post AS unique_post_id,
-      Teams.team_name,
-      Teams.team_color
-    FROM
-      Personal
-      INNER JOIN Teams ON Personal.team_id = Teams.team_id
-      LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
-      LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
-    WHERE Posts.user_id = ?
-    ORDER BY
-      Personal.personal_id,
-      Posts.post_id;
+        Personal.personal_id,
+        Personal.personal_name,
+        Posts.post_id,
+        Posts.post_description,
+        Interactions.checked,
+        Interactions.unique_post AS unique_post_id,
+        Teams.team_name,
+        Teams.team_color
+      FROM
+        Personal
+        INNER JOIN Teams ON Personal.team_id = Teams.team_id
+        LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
+        LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
+      WHERE Posts.user_id = ?
+      ORDER BY
+        Personal.personal_id,
+        Posts.post_id;
   `,
       [user.user_id],
       (err, results) => {
         if (err) {
           console.log('Error', err)
         }
-        results?.forEach((row) => {
-          //   WHERE
-          // DATE(Posts.register_date) = ?
 
-          // [date],
+        var posts_id = []
 
-          if (!usersWithPublications[row.personal_id]) {
-            // Si no existe, crea una nueva entrada para el usuario
-            usersWithPublications[row.personal_id] = {
-              personal_id: row.personal_id,
-              personal_name: row.personal_name,
-              personal_team: row.team_name,
-              team_color: row.team_color,
-              posts: [],
-            }
+        // sacamos los id de los posts para buscarlos posteriormente en otra consulta a la base de datos
+        results?.forEach((post) => {
+          posts_id.push(post.post_id)
+        })
+
+        const likesQuery = `
+          SELECT 
+            Posts.post_id,
+            GROUP_CONCAT(PostLikesList.like_name SEPARATOR ', ') AS like_names
+          FROM Posts
+          LEFT JOIN PostLikesList ON Posts.post_id = PostLikesList.post_id
+          WHERE Posts.post_id IN (?)
+          GROUP BY Posts.post_id;
+        `
+
+        connection.query(likesQuery, [posts_id], (err, postsWithLikes) => {
+          if (err) {
+            console.log(err)
           }
 
-          // Añade la publicación actual al array de publicaciones del usuario
-          usersWithPublications[row.personal_id].posts.push({
-            post_id: row.post_id,
-            post_description: row.post_description,
-            checked: row.checked,
-            unique_post_id: row.unique_post_id,
+          results?.forEach((row) => {
+            //   WHERE
+            // DATE(Posts.register_date) = ?
+
+            // [date],
+
+            if (!usersWithPublications[row.personal_id]) {
+              // Si no existe, crea una nueva entrada para el usuario
+              usersWithPublications[row.personal_id] = {
+                personal_id: row.personal_id,
+                personal_name: row.personal_name,
+                personal_team: row.team_name,
+                team_color: row.team_color,
+                posts: [],
+              }
+            }
+
+            // Añade la publicación actual al array de publicaciones del usuario
+            usersWithPublications[row.personal_id].posts.push({
+              post_id: row.post_id,
+              post_description: row.post_description,
+              checked: row.checked,
+              unique_post_id: row.unique_post_id,
+              likes: '',
+            })
+
+            const userWithPublicationsArray = Object.values(
+              usersWithPublications
+            )
+
+            // Agregamos los likes a los usuarios con publicaciones y a las publicaciones respectivas
+            userWithPublicationsArray.forEach((item) => {
+              item.posts.forEach((item_post) => {
+                postsWithLikes.forEach((post_id_item) => {
+                  if (item_post.post_id === post_id_item.post_id) {
+                    usersWithPublications[item.personal_id].posts.forEach(
+                      (final_post) => {
+                        if (final_post.post_id === post_id_item.post_id) {
+                          final_post.likes = post_id_item.like_names
+                        }
+                      }
+                    )
+                  }
+                })
+              })
+            })
           })
+
+          res.json(Object.values(usersWithPublications))
         })
-        res.json(Object.values(usersWithPublications))
       }
     )
   })
@@ -164,6 +209,8 @@ router.post('/posts', async (req, res) => {
 
   const postToCreate = await scrape(post_url)
 
+  console.log(postToCreate)
+
   const token = header_token.substring(7)
 
   jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
@@ -171,10 +218,18 @@ router.post('/posts', async (req, res) => {
       return res.status(403).json({ message: 'Invalid token' })
     }
 
+    // Creamos el array para registrar las imagenes de la publicacion
     const images = []
 
-    postToCreate.images.forEach((item) =>
+    postToCreate?.images.forEach((item) =>
       images.push([generateRandomNumber(), postToCreate.post_id, item])
+    )
+
+    // Creamos el array para registrar la lista de personas que dieron like a la publicacion
+    const postLikesList = []
+
+    postToCreate.likesList.forEach((item) =>
+      postLikesList.push([generateRandomNumber(), item, postToCreate.post_id])
     )
 
     // Obtener todos los personal_id de la tabla Personal
@@ -260,6 +315,28 @@ router.post('/posts', async (req, res) => {
                             .status(500)
                             .send('Error al insertar las imagenes en la DB.')
                         }
+
+                        const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
+                          .map(() => '(?, ?, ?)')
+                          .join(', ')}`
+
+                        const flattenedLikes = postLikesList.flat()
+
+                        connection.query(
+                          likesListQuery,
+                          flattenedLikes,
+                          (err) => {
+                            if (err) {
+                              console.log(
+                                'Error al registrar la lista de likes en la base de datos.'
+                              )
+                              console.log(err)
+                              return res
+                                .status(500)
+                                .send('Error al insertar los likes en la DB.')
+                            }
+                          }
+                        )
                       }
                     )
 
