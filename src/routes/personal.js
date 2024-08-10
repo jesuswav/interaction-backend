@@ -79,8 +79,6 @@ router.post('/search', (req, res) => {
   const search = req.body.search
   const header_token = req.headers.authorization
 
-  console.log(search)
-
   const searchValue = `%${search}%`
 
   const token = header_token.substring(7)
@@ -91,8 +89,6 @@ router.post('/search', (req, res) => {
     }
 
     const user_id = user.user_id
-
-    console.log(user_id)
 
     var usersWithPublications = {}
 
@@ -126,14 +122,10 @@ router.post('/search', (req, res) => {
 
         var posts_id = []
 
-        console.log(results)
-
         // sacamos los id de los posts para buscarlos posteriormente en otra consulta a la base de datos
         results?.forEach((post) => {
           posts_id.push(post.post_id)
         })
-
-        console.log(posts_id)
 
         const likesQuery = `
           SELECT 

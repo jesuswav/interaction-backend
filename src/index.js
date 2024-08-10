@@ -45,7 +45,6 @@ connection.connect((err) => {
 })
 
 setInterval(() => {
-  console.log('Keep alive')
   connection.query('SELECT 1', (err) => {
     if (err) {
       console.error('Error en la consulta de keep-alive:', err)
