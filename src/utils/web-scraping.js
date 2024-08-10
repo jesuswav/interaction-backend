@@ -210,7 +210,9 @@ const getLikesList = async (driver) => {
     let container = await driver.findElements(
       By.css(
         // '.__fb-light-mode.x1bhdrnm.xf2yzuf.xfvmy8p.x583dml.x1n2onr6.xzkaem6'
-        '.__fb-light-mode.x18whdkh.x1p4z1cd.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
+        // '.__fb-light-mode.x18whdkh.x1p4z1cd.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
+        // '.__fb-light-mode.x18whdkh.xa7am5w.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
+        '.__fb-light-mode.x1owg0sl.xa7am5w.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
       )
     )
 
@@ -218,25 +220,25 @@ const getLikesList = async (driver) => {
 
     // Comprobar si existe al menos un elemento con la clase especificada
     if (container.length > 0) {
-      // Definir el selector del elemento
-      let selector = By.css(
-        '.xb57i2i.x1q594ok.x5lxg6s.x78zum5.xdt5ytf.x6ikm8r.x1ja2u2z.x1pq812k.x1rohswg.xfk6m8.x1yqm8si.xjx87ck.xx8ngbg.xwo3gff.x1n2onr6.x1oyok0e.x1odjw0f.x1iyjqo2.xy5w88m'
-      )
+      // // Definir el selector del elemento
+      // let selector = By.css(
+      //   '.xb57i2i.x1q594ok.x5lxg6s.x78zum5.xdt5ytf.x6ikm8r.x1ja2u2z.x1pq812k.x1rohswg.xfk6m8.x1yqm8si.xjx87ck.xx8ngbg.xwo3gff.x1n2onr6.x1oyok0e.x1odjw0f.x1iyjqo2.xy5w88m'
+      // )
 
-      // Esperar hasta que el elemento sea visible
-      await driver.wait(
-        until.elementIsVisible(driver.findElement(selector)),
-        10000
-      )
+      // // Esperar hasta que el elemento sea visible
+      // await driver.wait(
+      //   until.elementIsVisible(driver.findElement(selector)),
+      //   10000
+      // )
 
-      // Encontrar el elemento
-      let scrollElement = await driver.findElement(selector)
+      // // Encontrar el elemento
+      // let scrollElement = await driver.findElement(selector)
 
-      // Hacer scroll hasta el final del elemento
-      await driver.executeScript(
-        'arguments[0].scrollTop = arguments[0].scrollHeight;',
-        scrollElement
-      )
+      // // Hacer scroll hasta el final del elemento
+      // await driver.executeScript(
+      //   'arguments[0].scrollTop = arguments[0].scrollHeight;',
+      //   scrollElement
+      // )
 
       await sleep(5000)
 
