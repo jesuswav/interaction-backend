@@ -30,6 +30,7 @@ router.get('/posts', (req, res) => {
       Posts.post_url,
       Posts.likes,
       Posts.shared,
+      Posts.register_date,
       Images.image_id,
       Images.image_url
     FROM Posts
@@ -53,6 +54,7 @@ router.get('/posts', (req, res) => {
               post_url: row.post_url,
               likes: row.likes,
               shared: row.shared,
+              register_date: row.register_date,
               images: [],
               likesList: [],
             }
@@ -393,8 +395,6 @@ router.post('/update-post', async (req, res) => {
   const user_id = 71727959
 
   const postToCreate = await scrape(post_url)
-
-  console.log(postToCreate)
 
   connection.query(
     `
