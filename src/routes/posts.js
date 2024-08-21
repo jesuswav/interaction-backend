@@ -186,7 +186,39 @@ router.post('/user_posts', (req, res) => {
             })
           })
 
-          res.json(Object.values(usersWithPublications))
+          const teams = {}
+
+          // Recorrer el objeto original
+          Object.values(usersWithPublications).forEach((personal) => {
+            const {
+              personal_team,
+              team_color,
+              personal_id,
+              personal_name,
+              posts,
+            } = personal
+
+            // Si el equipo no existe en el objeto teams, lo creamos
+            if (!teams[personal_team]) {
+              teams[personal_team] = {
+                team_name: personal_team,
+                team_color: team_color,
+                members: [],
+              }
+            }
+
+            // Agregar el personal al equipo correspondiente
+            teams[personal_team].members.push({
+              personal_id,
+              personal_name,
+              posts,
+            })
+          })
+
+          // Convertir el objeto teams en un array
+          const groupedTeams = Object.values(teams)
+
+          res.json(Object.values(groupedTeams))
         })
       }
     )

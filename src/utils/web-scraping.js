@@ -180,21 +180,9 @@ const getLikesList = async (driver) => {
     // Esperar a que el elemento esté presente y visible
     let element = await driver.findElement(
       By.css(
-        // 'div.x6s0dn4.xi81zsa.x78zum5.x6prxxf.x13a6bvl.xvq8zen.xdj266r.xat24cr.x1d52u69.xktsk01.x889kno.x1a8lsjc.xkhd6sd.x4uap5.xdppsyt'
-        // 'div.x6s0dn4.x78zum5.x1iyjqo2.x6ikm8r.x10wlt62'
-        // 'span.x4k7w5x.x1h91t0o.x1h9r5lt.x1jfb8zj.xv2umb2.x1beo9mf.xaigb6o.x12ejxvf.x3igimt.xarpa2k.xedcshv.x1lytzrv.x1t2pt76.x7ja8zs.x1qrby5j'
         'div.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1o1ewxj.x3x9cwd.x1e5q0jg.x13rtm0m.x1n2onr6.x87ps6o.x1lku1pv.x1a2a7pz.x1heor9g.xnl1qt8.x6ikm8r.x10wlt62.x1vjfegm.x1lliihq'
-        // 'span.xrbpyxo.x6ikm8r.x10wlt62.xlyipyv.x1exxlbk'
-        // 'span.xt0b8zv.x2bj2ny.xrbpyxo.xl423tq'
-        // 'div[role="button"]'
       )
     )
-
-    // let element = await driver.findElement(
-    //   By.xpath("//div[contains(@class, 'x1ja2u2z') and @role='button']")
-    // )
-
-    // await driver.executeScript('arguments[0].scrollIntoView(true);', element)
 
     // Espera hasta que el elemento sea clickeable
     await driver.wait(until.elementIsVisible(element), 10000)
