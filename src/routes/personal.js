@@ -74,4 +74,127 @@ router.post('/personal', (req, res) => {
   })
 })
 
+// Endpoint para buscar personal
+router.post('/search', (req, res) => {
+  const search = req.body.search
+  const header_token = req.headers.authorization
+
+  const searchValue = `%${search}%`
+
+  const token = header_token.substring(7)
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid token' })
+    }
+
+    const user_id = user.user_id
+
+    var usersWithPublications = {}
+
+    connection.query(
+      `
+      SELECT
+        Personal.personal_id,
+        Personal.personal_name,
+        Posts.post_id,
+        Posts.post_description,
+        Interactions.checked,
+        Interactions.unique_post AS unique_post_id,
+        Teams.team_name,
+        Teams.team_color
+      FROM
+        Personal
+      INNER JOIN Teams ON Personal.team_id = Teams.team_id
+      LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
+      LEFT JOIN Posts ON Interactions.post_id = Posts.post_id AND Posts.user_id = ?
+      WHERE
+        Personal.personal_name LIKE ?
+      ORDER BY
+        Personal.personal_id,
+        Posts.post_id;
+      `,
+      [user_id, searchValue],
+      (err, results) => {
+        if (err) {
+          console.log('Error', err)
+        }
+
+        var posts_id = []
+
+        // sacamos los id de los posts para buscarlos posteriormente en otra consulta a la base de datos
+        results?.forEach((post) => {
+          posts_id.push(post.post_id)
+        })
+
+        const likesQuery = `
+          SELECT 
+            Posts.post_id,
+            GROUP_CONCAT(PostLikesList.like_name SEPARATOR ', ') AS like_names
+          FROM Posts
+          LEFT JOIN PostLikesList ON Posts.post_id = PostLikesList.post_id
+          WHERE Posts.post_id IN (?)
+          GROUP BY Posts.post_id;
+        `
+
+        connection.query(likesQuery, [posts_id], (err, postsWithLikes) => {
+          if (err) {
+            console.log(err)
+          }
+
+          results?.forEach((row) => {
+            //   WHERE
+            // DATE(Posts.register_date) = ?
+
+            // [date],
+
+            if (!usersWithPublications[row.personal_id]) {
+              // Si no existe, crea una nueva entrada para el usuario
+              usersWithPublications[row.personal_id] = {
+                personal_id: row.personal_id,
+                personal_name: row.personal_name,
+                personal_team: row.team_name,
+                team_color: row.team_color,
+                posts: [],
+              }
+            }
+
+            // Añade la publicación actual al array de publicaciones del usuario
+            usersWithPublications[row.personal_id].posts.push({
+              post_id: row.post_id,
+              post_description: row.post_description,
+              checked: row.checked,
+              unique_post_id: row.unique_post_id,
+              likes: '',
+            })
+
+            const userWithPublicationsArray = Object.values(
+              usersWithPublications
+            )
+
+            // Agregamos los likes a los usuarios con publicaciones y a las publicaciones respectivas
+            userWithPublicationsArray.forEach((item) => {
+              item.posts.forEach((item_post) => {
+                postsWithLikes.forEach((post_id_item) => {
+                  if (item_post.post_id === post_id_item.post_id) {
+                    usersWithPublications[item.personal_id].posts.forEach(
+                      (final_post) => {
+                        if (final_post.post_id === post_id_item.post_id) {
+                          final_post.likes = post_id_item.like_names
+                        }
+                      }
+                    )
+                  }
+                })
+              })
+            })
+          })
+
+          res.json(Object.values(usersWithPublications))
+        })
+      }
+    )
+  })
+})
+
 module.exports = router

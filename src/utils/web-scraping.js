@@ -180,21 +180,9 @@ const getLikesList = async (driver) => {
     // Esperar a que el elemento esté presente y visible
     let element = await driver.findElement(
       By.css(
-        // 'div.x6s0dn4.xi81zsa.x78zum5.x6prxxf.x13a6bvl.xvq8zen.xdj266r.xat24cr.x1d52u69.xktsk01.x889kno.x1a8lsjc.xkhd6sd.x4uap5.xdppsyt'
-        // 'div.x6s0dn4.x78zum5.x1iyjqo2.x6ikm8r.x10wlt62'
-        // 'span.x4k7w5x.x1h91t0o.x1h9r5lt.x1jfb8zj.xv2umb2.x1beo9mf.xaigb6o.x12ejxvf.x3igimt.xarpa2k.xedcshv.x1lytzrv.x1t2pt76.x7ja8zs.x1qrby5j'
         'div.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1o1ewxj.x3x9cwd.x1e5q0jg.x13rtm0m.x1n2onr6.x87ps6o.x1lku1pv.x1a2a7pz.x1heor9g.xnl1qt8.x6ikm8r.x10wlt62.x1vjfegm.x1lliihq'
-        // 'span.xrbpyxo.x6ikm8r.x10wlt62.xlyipyv.x1exxlbk'
-        // 'span.xt0b8zv.x2bj2ny.xrbpyxo.xl423tq'
-        // 'div[role="button"]'
       )
     )
-
-    // let element = await driver.findElement(
-    //   By.xpath("//div[contains(@class, 'x1ja2u2z') and @role='button']")
-    // )
-
-    // await driver.executeScript('arguments[0].scrollIntoView(true);', element)
 
     // Espera hasta que el elemento sea clickeable
     await driver.wait(until.elementIsVisible(element), 10000)
@@ -207,45 +195,18 @@ const getLikesList = async (driver) => {
 
     sleep(6000)
 
-    let container = await driver.findElements(
-      By.css(
-        // '.__fb-light-mode.x1bhdrnm.xf2yzuf.xfvmy8p.x583dml.x1n2onr6.xzkaem6'
-        '.__fb-light-mode.x18whdkh.x1p4z1cd.xfvmy8p.xahrfoy.x1n2onr6.xzkaem6'
-      )
-    )
+    let container = await driver.findElements(By.css('.__fb-light-mode'))
 
     await sleep(4000)
 
     // Comprobar si existe al menos un elemento con la clase especificada
     if (container.length > 0) {
-      // Definir el selector del elemento
-      let selector = By.css(
-        '.xb57i2i.x1q594ok.x5lxg6s.x78zum5.xdt5ytf.x6ikm8r.x1ja2u2z.x1pq812k.x1rohswg.xfk6m8.x1yqm8si.xjx87ck.xx8ngbg.xwo3gff.x1n2onr6.x1oyok0e.x1odjw0f.x1iyjqo2.xy5w88m'
-      )
-
-      // Esperar hasta que el elemento sea visible
-      await driver.wait(
-        until.elementIsVisible(driver.findElement(selector)),
-        10000
-      )
-
-      // Encontrar el elemento
-      let scrollElement = await driver.findElement(selector)
-
-      // Hacer scroll hasta el final del elemento
-      await driver.executeScript(
-        'arguments[0].scrollTop = arguments[0].scrollHeight;',
-        scrollElement
-      )
-
       await sleep(5000)
 
       await driver.wait(
         until.elementLocated(
           By.css(
             '.x193iq5w.xeuugli.x13faqbe.x1vvkbs.x1xmvt09.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.xudqn12.x3x7a5m.x6prxxf.xvq8zen.xk50ysn.xzsf02u.x1yc453h'
-            // '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
-            // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
           )
         ),
         2000
@@ -255,19 +216,7 @@ const getLikesList = async (driver) => {
 
       let elementos = await driver.findElements(
         By.css(
-          // '.x78zum5.xdt5ytf.x1iyjqo2.x1n2onr6'
-          // '.x78zum5.xdt5ytf.xz62fqu.x16ldp7u'
-          // '.x6s0dn4.xkh2ocl.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1q0g3np.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x18d9i69.x4uap5.xkhd6sd.xexx8yu.x1n2onr6.x1ja2u2z'
-          // ':r1o:'
           '.x193iq5w.xeuugli.x13faqbe.x1vvkbs.x1xmvt09.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.xudqn12.x3x7a5m.x6prxxf.xvq8zen.xk50ysn.xzsf02u.x1yc453h'
-          // 2 - '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
-          // '.x1qjc9v5.x78zum5.xdt5ytf.x1n2onr6.x1al4vs7.x1jx94hy.xrjkcco.x58fqnu.x1mh14rs.xfkwgsy.x104qc98.x1gj8qfm.x1iyjqo2.x6ikm8r.x10wlt62.x1likypf.xzit4ce.x1e9k66k.x12l8kdc'
-          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
-          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
-          // '.x6s0dn4.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1q0g3np.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.xeuugli.x18d9i69.x1sxyh0.xurb0ha.xexx8yu.x1n2onr6.x1ja2u2z.x1gg8mnh'
-          // '.x1qjc9v5.x1q0q8m5.x1qhh985.xu3j5b3.xcfux6l.x26u7qi.xm0m39n.x13fuv20.x972fbf.x9f619.x78zum5.x1r8uery.xdt5ytf.x1iyjqo2.xs83m0k.x1qughib.xat24cr.x11i5rnm.x1mh8g0r.xdj266r.x2lwn1j.xeuugli.x4uap5.xkhd6sd.xz9dl7a.xsag5q8.x1n2onr6.x1ja2u2z'
-          // 'span[id=":r3q:"]'
-          // '.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz.x1sur9pj.xkrqix3.xzsf02u.x1s688f'
         )
       )
 

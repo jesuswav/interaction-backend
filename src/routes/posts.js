@@ -30,6 +30,7 @@ router.get('/posts', (req, res) => {
       Posts.post_url,
       Posts.likes,
       Posts.shared,
+      Posts.register_date,
       Images.image_id,
       Images.image_url
     FROM Posts
@@ -53,6 +54,7 @@ router.get('/posts', (req, res) => {
               post_url: row.post_url,
               likes: row.likes,
               shared: row.shared,
+              register_date: row.register_date,
               images: [],
               likesList: [],
             }
@@ -135,7 +137,6 @@ router.post('/user_posts', (req, res) => {
           if (err) {
             console.log(err)
           }
-          console.log(postsWithLikes)
 
           results?.forEach((row) => {
             //   WHERE
@@ -185,9 +186,39 @@ router.post('/user_posts', (req, res) => {
             })
           })
 
-          console.log(usersWithPublications)
+          const teams = {}
 
-          res.json(Object.values(usersWithPublications))
+          // Recorrer el objeto original
+          Object.values(usersWithPublications).forEach((personal) => {
+            const {
+              personal_team,
+              team_color,
+              personal_id,
+              personal_name,
+              posts,
+            } = personal
+
+            // Si el equipo no existe en el objeto teams, lo creamos
+            if (!teams[personal_team]) {
+              teams[personal_team] = {
+                team_name: personal_team,
+                team_color: team_color,
+                members: [],
+              }
+            }
+
+            // Agregar el personal al equipo correspondiente
+            teams[personal_team].members.push({
+              personal_id,
+              personal_name,
+              posts,
+            })
+          })
+
+          // Convertir el objeto teams en un array
+          const groupedTeams = Object.values(teams)
+
+          res.json(Object.values(groupedTeams))
         })
       }
     )
@@ -212,6 +243,8 @@ router.post('/posts', async (req, res) => {
 
   const postToCreate = await scrape(post_url)
 
+  console.log(post_url)
+
   console.log(postToCreate)
 
   const token = header_token.substring(7)
@@ -231,7 +264,7 @@ router.post('/posts', async (req, res) => {
     // Creamos el array para registrar la lista de personas que dieron like a la publicacion
     const postLikesList = []
 
-    postToCreate.likesList.forEach((item) =>
+    postToCreate?.likesList.forEach((item) =>
       postLikesList.push([generateRandomNumber(), item, postToCreate.post_id])
     )
 
@@ -299,6 +332,7 @@ router.post('/posts', async (req, res) => {
                         .send('Error al insertar en Interactions')
                     }
 
+                    // Insertar las imagenes del post dentro de la base de datos
                     const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
                       .map(() => '(?, ?, ?)')
                       .join(', ')}`
@@ -384,6 +418,135 @@ router.delete('/posts', (req, res) => {
     }
     res.json({ post_id })
   })
+})
+
+// Update posts values
+router.post('/update-post', async (req, res) => {
+  const post_url = req.body.post_url
+
+  const user_id = 71727959
+
+  const postToCreate = await scrape(post_url)
+
+  connection.query(
+    `
+      UPDATE Posts
+      SET
+        post_description = ?,
+        likes = ?,
+        shared = ?
+      WHERE
+        post_id = ?
+        AND user_id = ?
+    `,
+    [
+      postToCreate.description,
+      postToCreate.likes,
+      postToCreate.shared,
+      postToCreate.post_id,
+      user_id,
+    ],
+    (err) => {
+      if (err) {
+        console.error('Error al actualizar el Post', err)
+      }
+
+      // borrar las imagenes del post para agregar nuevas
+      connection.query(
+        `
+          DELETE FROM Images
+          WHERE post_id = ?
+        `,
+        [postToCreate.post_id],
+        (err) => {
+          if (err) {
+            console.error('Error al borrar las imagenes del post', err)
+          }
+
+          // borrando la lista de likes del post
+          connection.query(
+            `
+              DELETE FROM PostLikesList
+              WHERE post_id = ?
+            `,
+            [postToCreate.post_id],
+            (err) => {
+              if (err) {
+                console.error(
+                  'Error al eliminar la lista de likes del Post',
+                  err
+                )
+              }
+
+              // registrar las nuevas imagenes dentro de la db
+              // Creamos el array para registrar las imagenes de la publicacion
+              const images = []
+
+              postToCreate?.images.forEach((item) =>
+                images.push([
+                  generateRandomNumber(),
+                  postToCreate.post_id,
+                  item,
+                ])
+              )
+
+              // Insertar las imagenes del post dentro de la base de datos
+              const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
+                .map(() => '(?, ?, ?)')
+                .join(', ')}`
+
+              const flattenedImages = images.flat()
+
+              connection.query(imagesQuery, flattenedImages, (err, result) => {
+                if (err) {
+                  console.log(
+                    'Error al registrar las imagenes en la base de datos.'
+                  )
+                  console.log(err)
+                  return res
+                    .status(500)
+                    .send('Error al insertar las imagenes en la DB.')
+                }
+
+                // Creamos el array para registrar la lista de personas que dieron like a la publicacion
+                const postLikesList = []
+
+                postToCreate?.likesList.forEach((item) =>
+                  postLikesList.push([
+                    generateRandomNumber(),
+                    item,
+                    postToCreate.post_id,
+                  ])
+                )
+
+                // Insertar la lista de likes de la publicacion
+                const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
+                  .map(() => '(?, ?, ?)')
+                  .join(', ')}`
+
+                const flattenedLikes = postLikesList.flat()
+
+                connection.query(likesListQuery, flattenedLikes, (err) => {
+                  if (err) {
+                    console.log(
+                      'Error al registrar la lista de likes en la base de datos.'
+                    )
+                    console.log(err)
+                    return res
+                      .status(500)
+                      .send('Error al insertar los likes en la DB.')
+                  }
+                })
+              })
+              res
+                .status(201)
+                .json('Publicación e imagenes actualizadas exitosamente')
+            }
+          )
+        }
+      )
+    }
+  )
 })
 
 module.exports = router
