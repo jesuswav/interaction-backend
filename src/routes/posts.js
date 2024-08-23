@@ -87,8 +87,6 @@ router.post('/user_posts', (req, res) => {
       return res.status(403).json({ message: 'Invalid token' })
     }
 
-    console.log(user)
-
     var usersWithPublications = {}
 
     connection.query(
