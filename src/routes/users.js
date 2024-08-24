@@ -116,12 +116,6 @@ router.post('/login', (req, res) => {
 
     const token = jwt.sign(userForToken, process.env.SECRET_KEY)
 
-    // res.cookie('token', token, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   maxAge: 36000000,
-    // })
-
     res.status(200).json({ message: 'Login succesfull', token: token })
   })
 })
