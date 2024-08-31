@@ -3,94 +3,111 @@ const dotenv = require('dotenv')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const generateRandomNumber = require('../utils/generateRandomNumber')
-const connection = require('../utils/dbConnection')
+const pool = require('../utils/dbConnection')
 
 const scrape = require('../utils/web-scraping')
 
 dotenv.config()
 
 // Obtener todos los posts
-router.get('/posts', (req, res) => {
+router.get('/posts', async (req, res) => {
   const header_token = req.headers.authorization
+
+  if (!header_token || !header_token.startsWith('Bearer ')) {
+    return res
+      .status(401)
+      .json({ message: 'Token no proporcionado o inválido' })
+  }
 
   const token = header_token.substring(7)
 
-  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' })
-    }
+  try {
+    // Verificar el token
+    const user = jwt.verify(token, process.env.SECRET_KEY)
+    const user_id = user.user_id
 
     const posts = {}
 
-    connection.query(
-      `
-    SELECT 
-      Posts.post_id,
-      Posts.post_description,
-      Posts.post_url,
-      Posts.likes,
-      Posts.shared,
-      Posts.register_date,
-      Images.image_id,
-      Images.image_url
-    FROM Posts
+    // Consulta SQL para obtener publicaciones del usuario
+    const query = `
+      SELECT 
+        Posts.post_id,
+        Posts.post_description,
+        Posts.post_url,
+        Posts.likes,
+        Posts.shared,
+        Posts.register_date,
+        Images.image_id,
+        Images.image_url
+      FROM Posts
       LEFT JOIN Images ON Posts.post_id = Images.post_id
-    WHERE
-      Posts.user_id = ?
-  `,
-      [user.user_id],
-      (err, results) => {
-        if (err) {
-          console.error('Error al obtener los Posts', err)
+      WHERE Posts.user_id = ?
+    `
+
+    const [results] = await pool.query(query, [user_id])
+
+    results.forEach((row) => {
+      if (!posts[row.post_id]) {
+        posts[row.post_id] = {
+          post_id: row.post_id,
+          post_description: row.post_description,
+          post_url: row.post_url,
+          likes: row.likes,
+          shared: row.shared,
+          register_date: row.register_date,
+          images: [],
+          likesList: [],
         }
-
-        results.forEach((row) => {
-          // console.log(row.post_id, row.shared, row.likes, row.post_description)
-
-          if (!posts[row.post_id]) {
-            posts[row.post_id] = {
-              post_id: row.post_id,
-              post_description: row.post_description,
-              post_url: row.post_url,
-              likes: row.likes,
-              shared: row.shared,
-              register_date: row.register_date,
-              images: [],
-              likesList: [],
-            }
-          }
-
-          posts[row.post_id].images.push({
-            image_id: row.image_id,
-            image_url: row.image_url,
-          })
-
-          posts[row.post_id].likesList.push({
-            like_name: row.like_name,
-          })
-        })
-        res.json(Object.values(posts))
       }
-    )
-  })
+
+      if (row.image_id) {
+        posts[row.post_id].images.push({
+          image_id: row.image_id,
+          image_url: row.image_url,
+        })
+      }
+
+      if (row.like_name) {
+        posts[row.post_id].likesList.push({
+          like_name: row.like_name,
+        })
+      }
+    })
+
+    res.json(Object.values(posts))
+  } catch (err) {
+    console.error('Error al obtener los posts o verificar el token:', err)
+
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(403).json({ message: 'Token inválido' })
+    }
+
+    res.status(500).json({ message: 'Error en el servidor', error: err })
+  }
 })
 
 // para obtener los posts que le corresponden a cada persona
-router.post('/user_posts', (req, res) => {
-  const date = req.body.date
+router.post('/user_posts', async (req, res) => {
+  const { date } = req.body
   const header_token = req.headers.authorization
+
+  if (!header_token || !header_token.startsWith('Bearer ')) {
+    return res
+      .status(401)
+      .json({ message: 'Token no proporcionado o inválido' })
+  }
 
   const token = header_token.substring(7)
 
-  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' })
-    }
+  try {
+    // Verificamos el token
+    const user = jwt.verify(token, process.env.SECRET_KEY)
+    const user_id = user.user_id
 
-    var usersWithPublications = {}
+    let usersWithPublications = {}
 
-    connection.query(
-      `
+    // Consulta SQL para obtener publicaciones de un usuario
+    const query = `
       SELECT
         Personal.personal_id,
         Personal.personal_name,
@@ -105,335 +122,249 @@ router.post('/user_posts', (req, res) => {
         INNER JOIN Teams ON Personal.team_id = Teams.team_id
         LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
         LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
-      WHERE Posts.user_id = (?)
+      WHERE Posts.user_id = ?
       ORDER BY
         Personal.personal_id,
         Posts.post_id;
-  `,
-      [user.user_id],
-      (err, results) => {
-        if (err) {
-          console.log('Error', err)
+    `
+
+    const [results] = await pool.query(query, [user_id])
+
+    const posts_id = results.map((post) => post.post_id)
+
+    // Consulta SQL para obtener likes de las publicaciones
+    if (posts_id.length > 0) {
+      const likesQuery = `
+        SELECT 
+          Posts.post_id,
+          GROUP_CONCAT(PostLikesList.like_name SEPARATOR ', ') AS like_names
+        FROM Posts
+        LEFT JOIN PostLikesList ON Posts.post_id = PostLikesList.post_id
+        WHERE Posts.post_id IN (?)
+        GROUP BY Posts.post_id;
+      `
+
+      const [postsWithLikes] = await pool.query(likesQuery, [posts_id])
+
+      // Procesar los resultados y agrupar publicaciones por personal
+      results.forEach((row) => {
+        if (!usersWithPublications[row.personal_id]) {
+          usersWithPublications[row.personal_id] = {
+            personal_id: row.personal_id,
+            personal_name: row.personal_name,
+            personal_team: row.team_name,
+            team_color: row.team_color,
+            posts: [],
+          }
         }
 
-        var posts_id = []
-
-        // sacamos los id de los posts para buscarlos posteriormente en otra consulta a la base de datos
-        results?.forEach((post) => {
-          posts_id.push(post.post_id)
+        usersWithPublications[row.personal_id].posts.push({
+          post_id: row.post_id,
+          post_description: row.post_description,
+          checked: row.checked,
+          unique_post_id: row.unique_post_id,
+          likes: '',
         })
+      })
 
-        const likesQuery = `
-          SELECT 
-            Posts.post_id,
-            GROUP_CONCAT(PostLikesList.like_name SEPARATOR ', ') AS like_names
-          FROM Posts
-          LEFT JOIN PostLikesList ON Posts.post_id = PostLikesList.post_id
-          WHERE Posts.post_id IN (?)
-          GROUP BY Posts.post_id;
-        `
+      const userWithPublicationsArray = Object.values(usersWithPublications)
 
-        if (posts_id.length > 0) {
-          connection.query(likesQuery, [posts_id], (err, postsWithLikes) => {
-            if (err) {
-              console.log(err)
-            }
-
-            results?.forEach((row) => {
-              //   WHERE
-              // DATE(Posts.register_date) = ?
-
-              // [date],
-
-              if (!usersWithPublications[row.personal_id]) {
-                // Si no existe, crea una nueva entrada para el usuario
-                usersWithPublications[row.personal_id] = {
-                  personal_id: row.personal_id,
-                  personal_name: row.personal_name,
-                  personal_team: row.team_name,
-                  team_color: row.team_color,
-                  posts: [],
+      // Añadir los likes a las publicaciones correspondientes
+      userWithPublicationsArray.forEach((item) => {
+        item.posts.forEach((item_post) => {
+          postsWithLikes.forEach((post_id_item) => {
+            if (item_post.post_id === post_id_item.post_id) {
+              usersWithPublications[item.personal_id].posts.forEach(
+                (final_post) => {
+                  if (final_post.post_id === post_id_item.post_id) {
+                    final_post.likes = post_id_item.like_names
+                  }
                 }
-              }
-
-              // Añade la publicación actual al array de publicaciones del usuario
-              usersWithPublications[row.personal_id].posts.push({
-                post_id: row.post_id,
-                post_description: row.post_description,
-                checked: row.checked,
-                unique_post_id: row.unique_post_id,
-                likes: '',
-              })
-
-              const userWithPublicationsArray = Object.values(
-                usersWithPublications
               )
-
-              // Agregamos los likes a los usuarios con publicaciones y a las publicaciones respectivas
-              userWithPublicationsArray.forEach((item) => {
-                item.posts.forEach((item_post) => {
-                  postsWithLikes.forEach((post_id_item) => {
-                    if (item_post.post_id === post_id_item.post_id) {
-                      usersWithPublications[item.personal_id].posts.forEach(
-                        (final_post) => {
-                          if (final_post.post_id === post_id_item.post_id) {
-                            final_post.likes = post_id_item.like_names
-                          }
-                        }
-                      )
-                    }
-                  })
-                })
-              })
-            })
-
-            const teams = {}
-
-            // Recorrer el objeto original
-            Object.values(usersWithPublications).forEach((personal) => {
-              const {
-                personal_team,
-                team_color,
-                personal_id,
-                personal_name,
-                posts,
-              } = personal
-
-              // Si el equipo no existe en el objeto teams, lo creamos
-              if (!teams[personal_team]) {
-                teams[personal_team] = {
-                  team_name: personal_team,
-                  team_color: team_color,
-                  members: [],
-                }
-              }
-
-              // Agregar el personal al equipo correspondiente
-              teams[personal_team].members.push({
-                personal_id,
-                personal_name,
-                posts,
-              })
-            })
-
-            // Convertir el objeto teams en un array
-            const groupedTeams = Object.values(teams)
-
-            res.json(Object.values(groupedTeams))
+            }
           })
-        } else {
-          console.log('No existen IDs para validar')
+        })
+      })
+
+      // Clasificar los resultados por equipo
+      const teams = {}
+
+      Object.values(usersWithPublications).forEach((personal) => {
+        const { personal_team, team_color, personal_id, personal_name, posts } =
+          personal
+
+        if (!teams[personal_team]) {
+          teams[personal_team] = {
+            team_name: personal_team,
+            team_color: team_color,
+            members: [],
+          }
         }
-      }
+
+        teams[personal_team].members.push({
+          personal_id,
+          personal_name,
+          posts,
+        })
+      })
+
+      const groupedTeams = Object.values(teams)
+
+      res.json(groupedTeams)
+    } else {
+      console.log('No existen IDs para validar')
+      res.json([])
+    }
+  } catch (err) {
+    console.error(
+      'Error al obtener las publicaciones o verificar el token:',
+      err
     )
-  })
-})
 
-router.post('/prueba', async (req, res) => {
-  const post_url = req.body.post_url
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(403).json({ message: 'Token inválido' })
+    }
 
-  const postToCreate = await scrape(post_url)
-
-  console.log(postToCreate)
-
-  res.json(postToCreate)
+    res.status(500).json({ message: 'Error en el servidor', error: err })
+  }
 })
 
 // Para registrar un post y crear la relación con todos los usuarios de la DB
 router.post('/posts', async (req, res) => {
   const header_token = req.headers.authorization
   const post_url = req.body.post_url
-  let last_post_id = 0
 
-  const postToCreate = await scrape(post_url)
-
-  console.log(post_url)
-
-  console.log(postToCreate)
-
-  const token = header_token.substring(7)
-
-  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' })
-    }
-
-    // Creamos el array para registrar las imagenes de la publicacion
-    const images = []
-
-    postToCreate?.images.forEach((item) =>
-      images.push([generateRandomNumber(), postToCreate.post_id, item])
-    )
-
-    // Creamos el array para registrar la lista de personas que dieron like a la publicacion
-    const postLikesList = []
-
-    postToCreate?.likesList.forEach((item) =>
-      postLikesList.push([generateRandomNumber(), item, postToCreate.post_id])
-    )
-
-    // Obtener todos los personal_id de la tabla Personal
-    connection.query('SELECT personal_id FROM Personal', (err, results) => {
-      if (err) {
-        console.error('Error al obtener personal_id:', err)
-        return res.status(500).send('Error al obtener personal_id')
-      }
-      console.log(results)
-
-      const checkUsersQuery = 'SELECT * FROM Personal'
-      connection.query(checkUsersQuery, (err, personal) => {
-        if (err) {
-          console.log('Error searching for personal...')
-        }
-
-        console.log('Personal: ', personal)
-
-        if (personal.length === 0) {
-          return res.json({ message: 'There are no registers in personal.' })
-        }
-
-        // Insertar la nueva publicación en la tabla Posts
-        const newPostQuery =
-          'INSERT INTO Posts (post_id, post_description, post_url, likes, shared, user_id) VALUES (?, ?, ?, ?, ?, ?)'
-        connection.query(
-          newPostQuery,
-          [
-            postToCreate.post_id,
-            postToCreate.description,
-            postToCreate.post_url,
-            postToCreate.likes,
-            postToCreate.shared,
-            user.user_id,
-          ],
-          (err) => {
-            if (err) {
-              console.error('Error al insertar en Posts:', err)
-              return res.status(500).send('Error al insertar la publicación')
-            }
-
-            connection.query(
-              'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1',
-              (err, lastRegister) => {
-                if (err) {
-                  console.error('Error en la petición', err)
-                } else {
-                  last_post_id = lastRegister[0].post_id
-
-                  // Crear registros en la tabla Interactions para cada personal_id
-                  const interactions = results.map((row) => [
-                    generateRandomNumber(),
-                    row.personal_id,
-                    last_post_id,
-                  ])
-                  const interactionsQuery =
-                    'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
-
-                  connection.query(interactionsQuery, [interactions], (err) => {
-                    if (err) {
-                      console.error('Error al insertar en Interactions:', err)
-                      return res
-                        .status(500)
-                        .send('Error al insertar en Interactions')
-                    }
-
-                    // Insertar las imagenes del post dentro de la base de datos
-                    const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
-                      .map(() => '(?, ?, ?)')
-                      .join(', ')}`
-
-                    const flattenedImages = images.flat()
-
-                    connection.query(
-                      imagesQuery,
-                      flattenedImages,
-                      (err, result) => {
-                        if (err) {
-                          console.log(
-                            'Error al registrar las imagenes en la base de datos.'
-                          )
-                          console.log(err)
-                          return res
-                            .status(500)
-                            .send('Error al insertar las imagenes en la DB.')
-                        }
-
-                        const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
-                          .map(() => '(?, ?, ?)')
-                          .join(', ')}`
-
-                        const flattenedLikes = postLikesList.flat()
-
-                        connection.query(
-                          likesListQuery,
-                          flattenedLikes,
-                          (err) => {
-                            if (err) {
-                              console.log(
-                                'Error al registrar la lista de likes en la base de datos.'
-                              )
-                              console.log(err)
-                              return res
-                                .status(500)
-                                .send('Error al insertar los likes en la DB.')
-                            }
-                          }
-                        )
-                      }
-                    )
-
-                    res
-                      .status(201)
-                      .json('Publicación y relaciones creadas exitosamente')
-                  })
-                }
-              }
-            )
-          }
-        )
+  try {
+    // Verificar el token
+    const token = header_token.substring(7)
+    const user = await new Promise((resolve, reject) => {
+      jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+        if (err) return reject(err)
+        resolve(decoded)
       })
     })
-  })
+
+    // Obtener datos del post
+    const postToCreate = await scrape(post_url)
+
+    // Crear arrays para insertar en la base de datos
+    const images = postToCreate?.images.map((item) => [
+      generateRandomNumber(),
+      postToCreate.post_id,
+      item,
+    ])
+    const postLikesList = postToCreate?.likesList.map((item) => [
+      generateRandomNumber(),
+      item,
+      postToCreate.post_id,
+    ])
+
+    // Obtener todos los personal_id de la tabla Personal
+    const [results] = await pool.query('SELECT personal_id FROM Personal')
+
+    if (results.length === 0) {
+      return res.json({ message: 'There are no registers in personal.' })
+    }
+
+    // Insertar la nueva publicación en la tabla Posts
+    const newPostQuery =
+      'INSERT INTO Posts (post_id, post_description, post_url, likes, shared, user_id) VALUES (?, ?, ?, ?, ?, ?)'
+    await pool.query(newPostQuery, [
+      postToCreate.post_id,
+      postToCreate.description,
+      postToCreate.post_url,
+      postToCreate.likes,
+      postToCreate.shared,
+      user.user_id,
+    ])
+
+    // Obtener el último post_id insertado
+    const [lastRegister] = await pool.query(
+      'SELECT * FROM Posts ORDER BY register_date DESC LIMIT 1'
+    )
+    const last_post_id = lastRegister[0].post_id
+
+    // Crear registros en la tabla Interactions para cada personal_id
+    const interactions = results.map((row) => [
+      generateRandomNumber(),
+      row.personal_id,
+      last_post_id,
+    ])
+    const interactionsQuery =
+      'INSERT INTO Interactions (unique_post, personal_id, post_id) VALUES ?'
+    await pool.query(interactionsQuery, [interactions])
+
+    // Insertar las imágenes del post
+    if (images.length > 0) {
+      const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
+        .map(() => '(?, ?, ?)')
+        .join(', ')}`
+      const flattenedImages = images.flat()
+      await pool.query(imagesQuery, flattenedImages)
+    }
+
+    // Insertar la lista de likes
+    if (postLikesList.length > 0) {
+      const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
+        .map(() => '(?, ?, ?)')
+        .join(', ')}`
+      const flattenedLikes = postLikesList.flat()
+      await pool.query(likesListQuery, flattenedLikes)
+    }
+
+    res.status(201).json('Publicación y relaciones creadas exitosamente')
+  } catch (err) {
+    console.error('Error en la creación del post:', err)
+    res.status(500).json({ message: 'Error en el servidor', error: err })
+  }
 })
 
 // Para actualizar el valor de una publicación de un usuario
-router.put('/posts', (req, res) => {
-  const id = req.body.id
-  const value = req.body.value
+router.put('/posts', async (req, res) => {
+  const { id, value } = req.body
 
-  connection.query(
-    'UPDATE Interactions SET checked = ? WHERE unique_post = ?',
-    [value, id],
-    (err) => {
-      if (err) {
-        console.error('Error al actualizar la publicación', err)
-      }
-      res.json({ id, value })
-    }
-  )
+  if (!id || value === undefined) {
+    return res.status(400).json({ message: 'ID y valor son requeridos' })
+  }
+
+  try {
+    // Consulta SQL para actualizar la publicación
+    const query = 'UPDATE Interactions SET checked = ? WHERE unique_post = ?'
+    await pool.query(query, [value, id])
+
+    res.json({ id, value })
+  } catch (err) {
+    console.error('Error al actualizar la publicación', err)
+    res.status(500).json({ message: 'Error en el servidor', error: err })
+  }
 })
 
 // Para borrar una publicación
-router.delete('/posts', (req, res) => {
+router.delete('/posts', async (req, res) => {
   const post_id = req.body.post_id
 
-  connection.query('DELETE FROM Posts WHERE post_id = ?', [post_id], (err) => {
-    if (err) {
-      console.error('Error al eliminar el Post', err)
-    }
+  try {
+    // Eliminar el post
+    await pool.query('DELETE FROM Posts WHERE post_id = ?', [post_id])
     res.json({ post_id })
-  })
+  } catch (err) {
+    console.error('Error al eliminar el Post', err)
+    res.status(500).json({ message: 'Error al eliminar el post', error: err })
+  }
 })
 
 // Update posts values
 router.post('/update-post', async (req, res) => {
   const post_url = req.body.post_url
-
   const user_id = 71727959
 
-  const postToCreate = await scrape(post_url)
+  try {
+    // Scrapea el post desde la URL proporcionada
+    const postToCreate = await scrape(post_url)
 
-  connection.query(
-    `
+    // Actualiza el post en la base de datos
+    await pool.query(
+      `
       UPDATE Posts
       SET
         post_description = ?,
@@ -442,115 +373,86 @@ router.post('/update-post', async (req, res) => {
       WHERE
         post_id = ?
         AND user_id = ?
-    `,
-    [
-      postToCreate.description,
-      postToCreate.likes,
-      postToCreate.shared,
-      postToCreate.post_id,
-      user_id,
-    ],
-    (err) => {
-      if (err) {
-        console.error('Error al actualizar el Post', err)
-      }
+      `,
+      [
+        postToCreate.description,
+        postToCreate.likes,
+        postToCreate.shared,
+        postToCreate.post_id,
+        user_id,
+      ]
+    )
 
-      // borrar las imagenes del post para agregar nuevas
-      connection.query(
-        `
-          DELETE FROM Images
-          WHERE post_id = ?
-        `,
-        [postToCreate.post_id],
-        (err) => {
-          if (err) {
-            console.error('Error al borrar las imagenes del post', err)
-          }
+    // Elimina las imágenes del post
+    await pool.query(
+      `
+      DELETE FROM Images
+      WHERE post_id = ?
+      `,
+      [postToCreate.post_id]
+    )
 
-          // borrando la lista de likes del post
-          connection.query(
-            `
-              DELETE FROM PostLikesList
-              WHERE post_id = ?
-            `,
-            [postToCreate.post_id],
-            (err) => {
-              if (err) {
-                console.error(
-                  'Error al eliminar la lista de likes del Post',
-                  err
-                )
-              }
+    // Elimina la lista de likes del post
+    await pool.query(
+      `
+      DELETE FROM PostLikesList
+      WHERE post_id = ?
+      `,
+      [postToCreate.post_id]
+    )
 
-              // registrar las nuevas imagenes dentro de la db
-              // Creamos el array para registrar las imagenes de la publicacion
-              const images = []
+    // Prepara las imágenes para insertar
+    const images =
+      postToCreate?.images.map((item) => [
+        generateRandomNumber(),
+        postToCreate.post_id,
+        item,
+      ]) || []
 
-              postToCreate?.images.forEach((item) =>
-                images.push([
-                  generateRandomNumber(),
-                  postToCreate.post_id,
-                  item,
-                ])
-              )
+    if (images.length > 0) {
+      const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
+        .map(() => '(?, ?, ?)')
+        .join(', ')}`
 
-              // Insertar las imagenes del post dentro de la base de datos
-              const imagesQuery = `INSERT INTO Images (image_id, post_id, image_url) VALUES ${images
-                .map(() => '(?, ?, ?)')
-                .join(', ')}`
-
-              const flattenedImages = images.flat()
-
-              connection.query(imagesQuery, flattenedImages, (err, result) => {
-                if (err) {
-                  console.log(
-                    'Error al registrar las imagenes en la base de datos.'
-                  )
-                  console.log(err)
-                  return res
-                    .status(500)
-                    .send('Error al insertar las imagenes en la DB.')
-                }
-
-                // Creamos el array para registrar la lista de personas que dieron like a la publicacion
-                const postLikesList = []
-
-                postToCreate?.likesList.forEach((item) =>
-                  postLikesList.push([
-                    generateRandomNumber(),
-                    item,
-                    postToCreate.post_id,
-                  ])
-                )
-
-                // Insertar la lista de likes de la publicacion
-                const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
-                  .map(() => '(?, ?, ?)')
-                  .join(', ')}`
-
-                const flattenedLikes = postLikesList.flat()
-
-                connection.query(likesListQuery, flattenedLikes, (err) => {
-                  if (err) {
-                    console.log(
-                      'Error al registrar la lista de likes en la base de datos.'
-                    )
-                    console.log(err)
-                    return res
-                      .status(500)
-                      .send('Error al insertar los likes en la DB.')
-                  }
-                })
-              })
-              res
-                .status(201)
-                .json('Publicación e imagenes actualizadas exitosamente')
-            }
-          )
-        }
-      )
+      const flattenedImages = images.flat()
+      await pool.query(imagesQuery, flattenedImages)
     }
-  )
+
+    // Prepara la lista de likes para insertar
+    const postLikesList =
+      postToCreate?.likesList.map((item) => [
+        generateRandomNumber(),
+        item,
+        postToCreate.post_id,
+      ]) || []
+
+    if (postLikesList.length > 0) {
+      const likesListQuery = `INSERT INTO PostLikesList (post_list_id, like_name, post_id) VALUES ${postLikesList
+        .map(() => '(?, ?, ?)')
+        .join(', ')}`
+
+      const flattenedLikes = postLikesList.flat()
+      await pool.query(likesListQuery, flattenedLikes)
+    }
+
+    res.status(201).json('Publicación e imágenes actualizadas exitosamente')
+  } catch (err) {
+    console.error('Error al actualizar la publicación', err)
+    res
+      .status(500)
+      .json({ message: 'Error al actualizar la publicación', error: err })
+  }
+})
+
+// Prueba para la funcion de web-scraping
+router.post('/prueba', async (req, res) => {
+  const post_url = req.body.post_url
+
+  const postToCreate = await scrape(post_url)
+
+  console.log(postToCreate)
+
+  res.json(postToCreate)
 })
 
 module.exports = router
