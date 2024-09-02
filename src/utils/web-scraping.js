@@ -32,11 +32,6 @@ async function scrape(url) {
     likesList: [],
   }
 
-  const url1 = 'https://www.facebook.com/share/p/denWZ7obUeX4Kwzu/'
-  const url2 =
-    'https://www.facebook.com/linda.ruiz.54738/posts/pfbid02S3NGmbQn23WF4J6gaYq6sxREDnsiCjbkAWPaiuzw5kiyDcBXCQ9z88oN7XmtGvPl'
-  const url3 = 'https://www.facebook.com/share/p/E7ek6b1qzTR9racG/'
-
   try {
     // Abre una página web
     await driver.get(url)
@@ -104,8 +99,7 @@ async function scrape(url) {
         post.shared = 0
       }
 
-      // x1lq5wgf xgqcy7u x30kzoy x9jhf4c x1lliihq
-
+      // obtener la lista de personas que dieron like
       try {
         post.likesList = await getLikesList(driver)
       } catch {
@@ -174,6 +168,42 @@ const login = async (driver) => {
   }
 }
 
+// funcion para poder hacer scroll
+async function scrollUntilNoMoreElements(driver, containerSelector) {
+  let lastHeight = 0
+  let newHeight = 0
+
+  // Repetir hasta que ya no se carguen más elementos
+  while (true) {
+    // Obtener la altura actual del scroll
+    lastHeight = await driver.executeScript(
+      'return arguments[0].scrollHeight',
+      await driver.findElement(By.css(containerSelector))
+    )
+
+    // Hacer scroll hasta el final del contenedor
+    await driver.executeScript(
+      'arguments[0].scrollTop = arguments[0].scrollHeight;',
+      await driver.findElement(By.css(containerSelector))
+    )
+
+    // Esperar un poco para que los nuevos elementos carguen (2 segundos)
+    await driver.sleep(2000)
+
+    // Obtener la nueva altura del scroll después de cargar nuevos elementos
+    newHeight = await driver.executeScript(
+      'return arguments[0].scrollHeight',
+      await driver.findElement(By.css(containerSelector))
+    )
+
+    // Verificar si la altura del scroll no ha cambiado
+    if (newHeight === lastHeight) {
+      console.log('Todos los elementos han sido cargados.')
+      break // Romper el ciclo si ya no hay más elementos que cargar
+    }
+  }
+}
+
 // Get list of likes
 const getLikesList = async (driver) => {
   try {
@@ -201,6 +231,12 @@ const getLikesList = async (driver) => {
 
     // Comprobar si existe al menos un elemento con la clase especificada
     if (container.length > 0) {
+      // hacer scroll para cargar mas elementos
+      await scrollUntilNoMoreElements(
+        driver,
+        '.xb57i2i.x1q594ok.x5lxg6s.x78zum5.xdt5ytf.x6ikm8r.x1ja2u2z.x1pq812k.x1rohswg.xfk6m8.x1yqm8si.xjx87ck.xx8ngbg.xwo3gff.x1n2onr6.x1oyok0e.x1odjw0f.x1e4zzel.x1tbbn4q.x1y1aw1k.x4uap5.xwib8y2.xkhd6sd'
+      )
+
       await sleep(5000)
 
       await driver.wait(
@@ -232,7 +268,7 @@ const getLikesList = async (driver) => {
       }
 
       // Mostrar el array de textos en la consola
-      console.log(textos)
+      console.log(textos.length)
       return textos
     } else {
       console.log('El elemento no existe en la página.')
