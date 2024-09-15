@@ -31,17 +31,19 @@ router.get('/posts', async (req, res) => {
     // Consulta SQL para obtener publicaciones del usuario
     const query = `
       SELECT 
+        Posts.post_page_name,
         Posts.post_id,
         Posts.post_description,
         Posts.post_url,
         Posts.likes,
         Posts.shared,
-        Posts.register_date,
+        DATE_FORMAT(Posts.register_date, '%Y-%m-%d') AS formatted_date,
         Images.image_id,
         Images.image_url
       FROM Posts
       LEFT JOIN Images ON Posts.post_id = Images.post_id
       WHERE Posts.user_id = ?
+      ORDER BY Posts.register_date DESC
     `
 
     const [results] = await pool.query(query, [user_id])
@@ -49,12 +51,13 @@ router.get('/posts', async (req, res) => {
     results.forEach((row) => {
       if (!posts[row.post_id]) {
         posts[row.post_id] = {
+          page_name: row.post_page_name,
           post_id: row.post_id,
           post_description: row.post_description,
           post_url: row.post_url,
           likes: row.likes,
           shared: row.shared,
-          register_date: row.register_date,
+          register_date: row.formatted_date,
           images: [],
           likesList: [],
         }
@@ -104,6 +107,26 @@ router.post('/user_posts', async (req, res) => {
     const user = jwt.verify(token, process.env.SECRET_KEY)
     const user_id = user.user_id
 
+    // en caso de no tener una fecha
+    const dateQuery = `
+      SELECT 
+        DATE_FORMAT(register_date, '%Y-%m-%d') AS register_date
+      FROM Posts
+      ORDER BY register_date ASC;
+    `
+
+    const [dateResults] = await pool.query(dateQuery)
+
+    const lastDateRegistered = dateResults[dateResults.length - 1].register_date
+
+    let queryDate
+
+    if (date === undefined) {
+      queryDate = lastDateRegistered
+    } else {
+      queryDate = date
+    }
+
     let usersWithPublications = {}
 
     // Consulta SQL para obtener publicaciones de un usuario
@@ -122,13 +145,15 @@ router.post('/user_posts', async (req, res) => {
         INNER JOIN Teams ON Personal.team_id = Teams.team_id
         LEFT JOIN Interactions ON Personal.personal_id = Interactions.personal_id
         LEFT JOIN Posts ON Interactions.post_id = Posts.post_id
-      WHERE Posts.user_id = ?
+      WHERE 
+        Posts.user_id = ?
+        AND DATE(Posts.register_date) = ?
       ORDER BY
         Personal.personal_id,
         Posts.post_id;
     `
 
-    const [results] = await pool.query(query, [user_id])
+    const [results] = await pool.query(query, [user_id, queryDate])
 
     const posts_id = results.map((post) => post.post_id)
 
@@ -268,8 +293,9 @@ router.post('/posts', async (req, res) => {
 
     // Insertar la nueva publicación en la tabla Posts
     const newPostQuery =
-      'INSERT INTO Posts (post_id, post_description, post_url, likes, shared, user_id) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO Posts (post_page_name, post_id, post_description, post_url, likes, shared, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
     await pool.query(newPostQuery, [
+      postToCreate.page_name,
       postToCreate.post_id,
       postToCreate.description,
       postToCreate.post_url,
