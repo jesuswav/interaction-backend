@@ -23,6 +23,7 @@ async function scrape(url) {
     .build()
 
   let post = {
+    page_name: '',
     post_id: '',
     description: '',
     post_url: '',
@@ -49,6 +50,19 @@ async function scrape(url) {
         post.post_id = id[0]
       } catch {
         console.log('Error al obtener el id del post.')
+      }
+
+      try {
+        const name = await getPageName(
+          driver,
+          'span.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x1hl2dhg.x16tdsg8.x1vvkbs'
+        )
+
+        post.page_name = name
+        console.log(name)
+      } catch (error) {
+        console.log('No funciono')
+        post.page_name = 'Sin nombre'
       }
 
       try {
@@ -268,7 +282,7 @@ const getLikesList = async (driver) => {
       }
 
       // Mostrar el array de textos en la consola
-      console.log(textos.length)
+      // console.log(textos.length)
       return textos
     } else {
       console.log('El elemento no existe en la página.')
@@ -309,6 +323,16 @@ const getLikes = async (driver, element) => {
   let likesNumber = convertNumber(likes)
 
   return likesNumber
+}
+
+const getPageName = async (driver, element) => {
+  try {
+    const page_name = await driver.findElement(By.css(element)).getText()
+
+    return page_name
+  } catch (error) {
+    console.log('No jalo.')
+  }
 }
 
 function convertNumber(cadena) {
